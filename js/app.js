@@ -1,0 +1,732 @@
+/* InkNote - app controller: tools, pages, history, autosave, exports */
+(function () {
+  'use strict';
+
+  var M = window.InkModel;
+  var S = window.InkStorage;
+  var R = window.InkRender;
+  var X = window.InkExport;
+
+  var $ = function (sel) { return document.querySelector(sel); };
+  var clamp = function (v, a, b) { return v < a ? a : v > b ? b : v; };
+
+  var el = {
+    base: $('#baseCanvas'),
+    live: $('#liveCanvas'),
+    wrap: $('#pageWrap'),
+    stage: $('#stage'),
+    title: $('#docTitle'),
+    pageLabel: $('#pageLabel'),
+    zoomLabel: $('#zoomLabel'),
+    undo: $('#btnUndo'),
+    redo: $('#btnRedo'),
+    prev: $('#prevPage'),
+    next: $('#nextPage'),
+    add: $('#addPage'),
+    dup: $('#dupPage'),
+    del: $('#delPage'),
+    clear: $('#clearPage'),
+    png: $('#btnPng'),
+    pdf: $('#btnPdf'),
+    menu: $('#btnMenu'),
+    menuPop: $('#menuPop'),
+    file: $('#fileInput'),
+    exportJson: $('#btnExportJson'),
+    importJson: $('#btnImportJson'),
+    newDoc: $('#btnNewDoc'),
+    slider: $('#sizeSlider'),
+    sizeLabel: $('#sizeLabel'),
+    zoomIn: $('#zoomIn'),
+    zoomOut: $('#zoomOut'),
+    zoomFit: $('#zoomFit'),
+    color: $('#colorInput'),
+    toolName: $('#toolName'),
+    btnSize: $('#btnSize'),
+    sizeDot: $('#sizeDot'),
+    sizePop: $('#sizePop'),
+    tools: Array.prototype.slice.call(document.querySelectorAll('[data-tool]')),
+    swatches: Array.prototype.slice.call(document.querySelectorAll('[data-color]')),
+    bgs: Array.prototype.slice.call(document.querySelectorAll('[data-bg]'))
+  };
+
+  var baseCtx = el.base.getContext('2d');
+  var liveCtx = el.live.getContext('2d');
+
+  var SIZE_RANGE = {
+    pen: [1, 24, 0.5],
+    highlighter: [8, 48, 1],
+    eraser: [6, 64, 1]
+  };
+  var TOOL_LABEL = { pen: 'Bút', highlighter: 'Dạ quang', eraser: 'Tẩy' };
+
+  var doc = bootDoc();
+  var tool = 'pen';
+  var color = '#1f2430';
+  var sizes = { pen: 3, highlighter: 18, eraser: 16 };
+  var zoom = 1;
+  var fitMode = true;
+  var dpr = Math.min(window.devicePixelRatio || 1, 2);
+
+  var current = null;
+  var erasing = false;
+  var eraseSnapshot = null;
+  var eraseRemoved = false;
+  var eraserPos = null;
+  var redrawQueued = false;
+
+  var undoStack = [];
+  var redoStack = [];
+  var saveTimer = null;
+
+  /* ---------------------------------------------------------------- doc io */
+
+  function bootDoc() {
+    var saved = S.load();
+    if (saved) {
+      try { return M.normalizeDoc(saved); } catch (e) { /* fall through */ }
+    }
+    return M.createDoc();
+  }
+
+  function activePage() {
+    return doc.pages[clamp(doc.active, 0, doc.pages.length - 1)];
+  }
+
+  function markDirty() {
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(function () { S.save(doc); }, 300);
+  }
+
+  function snapshot() {
+    return JSON.stringify(doc);
+  }
+
+  function pushHistory() {
+    undoStack.push(snapshot());
+    if (undoStack.length > 60) undoStack.shift();
+    redoStack.length = 0;
+  }
+
+  function restore(serialized) {
+    doc = M.normalizeDoc(JSON.parse(serialized));
+    renderAll();
+    markDirty();
+  }
+
+  function undo() {
+    if (!undoStack.length) return;
+    redoStack.push(snapshot());
+    restore(undoStack.pop());
+  }
+
+  function redo() {
+    if (!redoStack.length) return;
+    undoStack.push(snapshot());
+    restore(redoStack.pop());
+  }
+
+  /* ------------------------------------------------------------- rendering */
+
+  /* Backing scale, capped so a wide fit-to-width zoom cannot exhaust canvas memory. */
+  function pageScale() {
+    var raw = dpr * zoom;
+    var cap = Math.sqrt(12e6 / (M.PAGE_W * M.PAGE_H));
+    return Math.min(raw, cap);
+  }
+
+  function applyTransform(ctx) {
+    var s = pageScale();
+    ctx.setTransform(s, 0, 0, s, 0, 0);
+  }
+
+  function layout() {
+    var s = pageScale();
+    var bw = Math.round(M.PAGE_W * s);
+    var bh = Math.round(M.PAGE_H * s);
+    var cssW = (M.PAGE_W * zoom) + 'px';
+    var cssH = (M.PAGE_H * zoom) + 'px';
+    [el.base, el.live].forEach(function (canvas) {
+      canvas.width = bw;
+      canvas.height = bh;
+      canvas.style.width = cssW;
+      canvas.style.height = cssH;
+    });
+    el.wrap.style.width = cssW;
+    el.wrap.style.height = cssH;
+  }
+
+  function renderBase() {
+    baseCtx.setTransform(1, 0, 0, 1, 0, 0);
+    baseCtx.clearRect(0, 0, el.base.width, el.base.height);
+    applyTransform(baseCtx);
+    var page = activePage();
+    R.drawBackground(baseCtx, page.bg, M.PAGE_W, M.PAGE_H, 1 / zoom);
+    for (var i = 0; i < page.strokes.length; i++) {
+      R.renderStroke(baseCtx, page.strokes[i]);
+    }
+  }
+
+  function clearLive() {
+    liveCtx.setTransform(1, 0, 0, 1, 0, 0);
+    liveCtx.clearRect(0, 0, el.live.width, el.live.height);
+    applyTransform(liveCtx);
+  }
+
+  function renderLive() {
+    clearLive();
+    if (current) R.renderStroke(liveCtx, current);
+    if (eraserPos && tool === 'eraser') {
+      R.drawEraserRing(liveCtx, eraserPos.x, eraserPos.y, sizes.eraser / 2);
+    }
+  }
+
+  function renderAll() {
+    layout();
+    renderBase();
+    clearLive();
+    updateUI();
+  }
+
+  function queueRedraw() {
+    if (redrawQueued) return;
+    redrawQueued = true;
+    requestAnimationFrame(function () {
+      redrawQueued = false;
+      renderBase();
+    });
+  }
+
+  /* ----------------------------------------------------------------- input */
+
+  function pagePoint(e) {
+    var rect = el.base.getBoundingClientRect();
+    return {
+      x: (e.clientX - rect.left) / zoom,
+      y: (e.clientY - rect.top) / zoom
+    };
+  }
+
+  function pressureOf(e) {
+    if (e.pointerType !== 'pen') return 0.5;
+    var p = typeof e.pressure === 'number' ? e.pressure : 0.5;
+    return clamp(p, 0.08, 1);
+  }
+
+  function addPoint(pt, pressure) {
+    var pts = current.points;
+    if (!pts.length) {
+      pts.push({ x: pt.x, y: pt.y, p: pressure });
+      return;
+    }
+    var last = pts[pts.length - 1];
+    var p = last.p * 0.55 + pressure * 0.45;
+    var dx = pt.x - last.x;
+    var dy = pt.y - last.y;
+    var dist = Math.sqrt(dx * dx + dy * dy);
+    if (dist < 0.35) return;
+    var step = Math.max(1.5, current.size * 0.2);
+    var n = clamp(Math.round(dist / step), 1, 48);
+    for (var i = 1; i <= n; i++) {
+      var t = i / n;
+      pts.push({ x: last.x + dx * t, y: last.y + dy * t, p: last.p + (p - last.p) * t });
+    }
+  }
+
+  function eraseAt(pt) {
+    var page = activePage();
+    var radius = sizes.eraser / 2;
+    var removed = false;
+    for (var i = page.strokes.length - 1; i >= 0; i--) {
+      if (R.strokeHitsPoint(page.strokes[i], pt.x, pt.y, radius)) {
+        page.strokes.splice(i, 1);
+        removed = true;
+      }
+    }
+    if (removed) eraseRemoved = true;
+    return removed;
+  }
+
+  function onPointerDown(e) {
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    e.preventDefault();
+    try { el.base.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
+    var pt = pagePoint(e);
+
+    if (tool === 'eraser') {
+      erasing = true;
+      eraseSnapshot = snapshot();
+      eraseRemoved = false;
+      eraserPos = pt;
+      if (eraseAt(pt)) queueRedraw();
+      renderLive();
+      return;
+    }
+
+    pushHistory();
+    current = {
+      id: M.uid(),
+      tool: tool === 'highlighter' ? 'highlighter' : 'pen',
+      color: color,
+      size: sizes[tool],
+      pressureMode: e.pointerType === 'pen' ? 'real' : 'none',
+      points: []
+    };
+    addPoint(pt, pressureOf(e));
+    renderLive();
+  }
+
+  /* Keep the paper moving while the stylus approaches an edge. */
+  function autoScroll(e) {
+    var rect = el.stage.getBoundingClientRect();
+    var edge = 78;
+    if (e.clientY > rect.bottom - edge) {
+      el.stage.scrollTop += Math.min(26, (e.clientY - (rect.bottom - edge)) * 0.45);
+    } else if (e.clientY < rect.top + edge) {
+      el.stage.scrollTop -= Math.min(26, (rect.top + edge - e.clientY) * 0.45);
+    }
+  }
+
+  function onPointerMove(e) {
+    if (current) {
+      autoScroll(e);
+      addPoint(pagePoint(e), pressureOf(e));
+      renderLive();
+      return;
+    }
+    if (erasing) {
+      autoScroll(e);
+      eraserPos = pagePoint(e);
+      if (eraseAt(eraserPos)) queueRedraw();
+      renderLive();
+      return;
+    }
+    if (tool === 'eraser') {
+      eraserPos = pagePoint(e);
+      renderLive();
+    }
+  }
+
+  function onPointerUp() {
+    if (current) {
+      var finished = current;
+      current = null;
+      if (finished.points.length) {
+        activePage().strokes.push(finished);
+        applyTransform(baseCtx);
+        R.renderStroke(baseCtx, finished);
+        markDirty();
+      }
+      clearLive();
+      updateUI();
+      return;
+    }
+    if (erasing) {
+      erasing = false;
+      if (eraseRemoved) {
+        undoStack.push(eraseSnapshot);
+        if (undoStack.length > 60) undoStack.shift();
+        redoStack.length = 0;
+        markDirty();
+      }
+      eraseSnapshot = null;
+      renderBase();
+      clearLive();
+      updateUI();
+    }
+  }
+
+  function onPointerCancel() {
+    if (current) {
+      current = null;
+      clearLive();
+      if (undoStack.length) undoStack.pop();
+      updateUI();
+      return;
+    }
+    if (erasing) {
+      erasing = false;
+      eraseSnapshot = null;
+      renderBase();
+      clearLive();
+    }
+  }
+
+  /* -------------------------------------------------------------------- ui */
+
+  function updateUI() {
+    el.pageLabel.textContent = (doc.active + 1) + ' / ' + doc.pages.length;
+    el.prev.disabled = doc.active <= 0;
+    el.next.disabled = doc.active >= doc.pages.length - 1;
+    el.del.disabled = doc.pages.length <= 1;
+    el.undo.disabled = undoStack.length === 0;
+    el.redo.disabled = redoStack.length === 0;
+    if (document.activeElement !== el.title) el.title.value = doc.title;
+
+    el.tools.forEach(function (btn) {
+      var on = btn.dataset.tool === tool;
+      btn.classList.toggle('is-active', on);
+      btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+    });
+    el.swatches.forEach(function (btn) {
+      btn.classList.toggle('is-active', btn.dataset.color.toLowerCase() === color.toLowerCase());
+    });
+    el.bgs.forEach(function (btn) {
+      btn.classList.toggle('is-active', btn.dataset.bg === activePage().bg);
+    });
+    el.toolName.textContent = TOOL_LABEL[tool];
+  }
+
+  function updateZoomLabel() {
+    el.zoomLabel.textContent = Math.round(zoom * 100) + '%';
+  }
+
+  function syncSlider() {
+    var range = SIZE_RANGE[tool];
+    el.slider.min = String(range[0]);
+    el.slider.max = String(range[1]);
+    el.slider.step = String(range[2]);
+    el.slider.value = String(sizes[tool]);
+    el.sizeLabel.textContent = String(Math.round(sizes[tool]));
+    el.slider.disabled = false;
+    var dot = clamp(sizes[tool], 4, 18);
+    if (el.sizeDot) {
+      el.sizeDot.style.width = dot + 'px';
+      el.sizeDot.style.height = dot + 'px';
+    }
+  }
+
+  function setTool(next) {
+    if (tool === next) return;
+    tool = next;
+    eraserPos = null;
+    el.base.style.cursor = tool === 'eraser' ? 'none' : 'crosshair';
+    syncSlider();
+    renderLive();
+    updateUI();
+  }
+
+  function setColor(next) {
+    color = next;
+    el.color.value = next;
+    if (el.sizeDot) el.sizeDot.style.background = next;
+    updateUI();
+  }
+
+  function changeSize(delta) {
+    var range = SIZE_RANGE[tool];
+    sizes[tool] = clamp(sizes[tool] + delta * range[2] * 2, range[0], range[1]);
+    syncSlider();
+  }
+
+  function setZoom(next) {
+    zoom = clamp(next, 0.35, 3);
+    fitMode = false;
+    layout();
+    renderBase();
+    renderLive();
+    updateZoomLabel();
+  }
+
+  /* Paper fills the window like a notepad: fit the width, scroll vertically. */
+  function fitStage() {
+    var availW = el.stage.clientWidth;
+    if (availW <= 0) return;
+    zoom = clamp(availW / M.PAGE_W, 0.35, 3);
+    layout();
+    renderBase();
+    renderLive();
+    updateZoomLabel();
+    fitMode = true;
+  }
+
+  function gotoPage(index) {
+    var next = clamp(index, 0, doc.pages.length - 1);
+    if (next === doc.active) return;
+    doc.active = next;
+    eraserPos = null;
+    renderAll();
+    markDirty();
+  }
+
+  function addPage() {
+    pushHistory();
+    doc.pages.splice(doc.active + 1, 0, M.createPage(activePage().bg));
+    doc.active += 1;
+    renderAll();
+    markDirty();
+  }
+
+  function duplicatePage() {
+    pushHistory();
+    var copy = JSON.parse(JSON.stringify(activePage()));
+    copy.id = M.uid();
+    doc.pages.splice(doc.active + 1, 0, copy);
+    doc.active += 1;
+    renderAll();
+    markDirty();
+  }
+
+  function deletePage() {
+    if (doc.pages.length <= 1) return;
+    pushHistory();
+    doc.pages.splice(doc.active, 1);
+    doc.active = clamp(doc.active, 0, doc.pages.length - 1);
+    renderAll();
+    markDirty();
+  }
+
+  function clearPage() {
+    if (!activePage().strokes.length) return;
+    pushHistory();
+    activePage().strokes = [];
+    renderBase();
+    updateUI();
+    markDirty();
+  }
+
+  function setBackground(bg) {
+    if (activePage().bg === bg) return;
+    pushHistory();
+    activePage().bg = bg;
+    renderBase();
+    updateUI();
+    markDirty();
+  }
+
+  function safeName() {
+    return (doc.title || 'inknote')
+      .replace(/[\\/:*?"<>|\u0000-\u001f]+/g, '-')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .slice(0, 80) || 'inknote';
+  }
+
+  function exportPng() {
+    X.exportPNG(activePage(), safeName() + '-trang-' + (doc.active + 1)).catch(function (err) {
+      alert(err.message);
+    });
+  }
+
+  function exportPdf() {
+    if (el.pdf.dataset.busy === '1') return;
+    el.pdf.dataset.busy = '1';
+    var label = el.pdf.textContent;
+    X.exportPDF(doc, safeName(), function (i, total) {
+      el.pdf.textContent = i + '/' + total;
+    }).then(function () {
+      el.pdf.textContent = label;
+      el.pdf.dataset.busy = '0';
+    }).catch(function (err) {
+      el.pdf.textContent = label;
+      el.pdf.dataset.busy = '0';
+      alert('Xuất PDF thất bại: ' + err.message);
+    });
+  }
+
+  var POPOVERS = [];
+
+  function registerPop(pop, trigger) {
+    POPOVERS.push({ pop: pop, trigger: trigger });
+  }
+
+  function closePopovers(except) {
+    POPOVERS.forEach(function (entry) {
+      if (entry.pop === except) return;
+      entry.pop.hidden = true;
+      if (entry.trigger) entry.trigger.setAttribute('aria-expanded', 'false');
+    });
+  }
+
+  function togglePop(pop, trigger) {
+    var willOpen = pop.hidden;
+    closePopovers(pop);
+    pop.hidden = !willOpen;
+    if (trigger) trigger.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
+  }
+
+  function newDocument() {
+    if (!confirm('Tạo ghi chú mới? Nội dung hiện tại sẽ được thay thế (vẫn có thể hoàn tác).')) return;
+    pushHistory();
+    doc = M.createDoc();
+    renderAll();
+    markDirty();
+  }
+
+  /* ----------------------------------------------------------------- wiring */
+
+  el.base.addEventListener('pointerdown', onPointerDown);
+  el.base.addEventListener('pointermove', onPointerMove);
+  el.base.addEventListener('pointerup', onPointerUp);
+  el.base.addEventListener('pointercancel', onPointerCancel);
+  el.base.addEventListener('pointerleave', function () {
+    if (erasing || current) return;
+    eraserPos = null;
+    renderLive();
+  });
+
+  el.tools.forEach(function (btn) {
+    btn.addEventListener('click', function () { setTool(btn.dataset.tool); });
+  });
+  el.swatches.forEach(function (btn) {
+    btn.addEventListener('click', function () { setColor(btn.dataset.color); });
+  });
+  el.color.addEventListener('input', function () { setColor(el.color.value); });
+  el.slider.addEventListener('input', function () {
+    sizes[tool] = parseFloat(el.slider.value) || SIZE_RANGE[tool][0];
+    el.sizeLabel.textContent = String(Math.round(sizes[tool]));
+    if (el.sizeDot) {
+      var dot = clamp(sizes[tool], 4, 18);
+      el.sizeDot.style.width = dot + 'px';
+      el.sizeDot.style.height = dot + 'px';
+    }
+  });
+
+  el.bgs.forEach(function (btn) {
+    btn.addEventListener('click', function () { setBackground(btn.dataset.bg); });
+  });
+
+  el.undo.addEventListener('click', undo);
+  el.redo.addEventListener('click', redo);
+  el.prev.addEventListener('click', function () { gotoPage(doc.active - 1); });
+  el.next.addEventListener('click', function () { gotoPage(doc.active + 1); });
+  el.add.addEventListener('click', addPage);
+  el.dup.addEventListener('click', duplicatePage);
+  el.del.addEventListener('click', deletePage);
+  el.clear.addEventListener('click', clearPage);
+
+  el.png.addEventListener('click', exportPng);
+  el.pdf.addEventListener('click', exportPdf);
+
+  el.zoomIn.addEventListener('click', function () { setZoom(zoom + 0.1); });
+  el.zoomOut.addEventListener('click', function () { setZoom(zoom - 0.1); });
+  el.zoomFit.addEventListener('click', fitStage);
+
+  el.title.addEventListener('input', function () {
+    doc.title = el.title.value.slice(0, 120);
+    markDirty();
+  });
+
+  registerPop(el.menuPop, el.menu);
+  registerPop(el.sizePop, el.btnSize);
+
+  el.menu.addEventListener('click', function (e) {
+    e.stopPropagation();
+    togglePop(el.menuPop, el.menu);
+  });
+  el.btnSize.addEventListener('click', function (e) {
+    e.stopPropagation();
+    togglePop(el.sizePop, el.btnSize);
+  });
+  document.addEventListener('click', function (e) {
+    var inside = POPOVERS.some(function (entry) {
+      return entry.pop.contains(e.target) || (entry.trigger && entry.trigger.contains(e.target));
+    });
+    if (!inside) closePopovers();
+  });
+  el.exportJson.addEventListener('click', function () {
+    X.exportJSON(doc, safeName());
+    closePopovers();
+  });
+  el.importJson.addEventListener('click', function () {
+    el.file.click();
+  });
+  el.newDoc.addEventListener('click', function () {
+    closePopovers();
+    newDocument();
+  });
+  el.file.addEventListener('change', function () {
+    var file = el.file.files && el.file.files[0];
+    el.file.value = '';
+    if (!file) return;
+    X.readFileAsText(file).then(function (text) {
+      var parsed = M.normalizeDoc(JSON.parse(text));
+      pushHistory();
+      doc = parsed;
+      renderAll();
+      markDirty();
+      closePopovers();
+    }).catch(function (err) {
+      alert('Không nhập được file: ' + err.message);
+    });
+  });
+
+  document.addEventListener('keydown', function (e) {
+    var tag = e.target && e.target.tagName;
+    if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+    var mod = e.ctrlKey || e.metaKey;
+
+    if (mod && e.key.toLowerCase() === 'z') {
+      e.preventDefault();
+      if (e.shiftKey) redo(); else undo();
+      return;
+    }
+    if (mod && e.key.toLowerCase() === 'y') {
+      e.preventDefault();
+      redo();
+      return;
+    }
+    if (e.key === 'Escape') {
+      closePopovers();
+      return;
+    }
+    if (mod || e.altKey) return;
+
+    switch (e.key) {
+      case 'p': case 'P': setTool('pen'); break;
+      case 'h': case 'H': setTool('highlighter'); break;
+      case 'e': case 'E': setTool('eraser'); break;
+      case '[': changeSize(-1); break;
+      case ']': changeSize(1); break;
+      case '+': case '=': setZoom(zoom + 0.1); break;
+      case '-': case '_': setZoom(zoom - 0.1); break;
+      case 'ArrowLeft': gotoPage(doc.active - 1); break;
+      case 'ArrowRight': gotoPage(doc.active + 1); break;
+      case 'PageUp': gotoPage(doc.active - 1); break;
+      case 'PageDown': gotoPage(doc.active + 1); break;
+      case 'Delete': case 'Backspace': e.preventDefault(); clearPage(); break;
+      default: break;
+    }
+  });
+
+  window.addEventListener('resize', function () {
+    if (fitMode) fitStage();
+  });
+
+  /* The Review pane can open with a zero-sized stage, so refit as soon as it gains size. */
+  if (window.ResizeObserver) {
+    var lastStage = { w: 0, h: 0 };
+    new ResizeObserver(function () {
+      var w = el.stage.clientWidth;
+      var h = el.stage.clientHeight;
+      if (w === lastStage.w && h === lastStage.h) return;
+      lastStage.w = w;
+      lastStage.h = h;
+      if (fitMode && w > 0 && h > 0) fitStage();
+    }).observe(el.stage);
+  }
+
+  window.addEventListener('beforeunload', function () {
+    S.save(doc);
+  });
+
+  /* ------------------------------------------------------------------- boot */
+
+  el.base.style.cursor = 'crosshair';
+  el.title.value = doc.title;
+  syncSlider();
+  setColor(color);
+  layout();
+  renderBase();
+  updateZoomLabel();
+  updateUI();
+  /* rAF and ResizeObserver both pause on a hidden tab, so retry until the stage has width. */
+  var fitTries = 0;
+  function bootFit() {
+    if (el.stage.clientWidth > 0) {
+      if (fitMode) fitStage();
+      return;
+    }
+    if (fitTries++ < 60) setTimeout(bootFit, 60);
+  }
+  setTimeout(bootFit, 0);
+})();

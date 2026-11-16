@@ -3,7 +3,14 @@
 Bản web lấy cảm hứng từ Scrble Ink: viết tay bằng bút cảm ứng, nhiều trang, xuất PDF.
 Toàn bộ chạy bằng HTML/CSS/JavaScript thuần — **không cần Node, npm, hay bất kỳ thư viện nào**.
 
-## Chạy app
+## Dùng online (không cần cài gì)
+
+**https://nguyenducanha50-pixel.github.io/inknote/**
+
+Mở bằng Chrome / Edge trên máy tính hoặc tablet có bút cảm ứng. Ghi chú được lưu
+trong trình duyệt của từng người, không chia sẻ giữa các máy.
+
+## Chạy trên máy
 
 **Cách 1 (khuyến nghị):** nhấp đúp `start.bat` — mở sẵn trình duyệt tại `http://127.0.0.1:8123/`.
 

@@ -61,6 +61,7 @@
     lineOpts: Array.prototype.slice.call(document.querySelectorAll('[data-line]')),
     smoothBtns: Array.prototype.slice.call(document.querySelectorAll('[data-smooth]')),
     uiBtns: Array.prototype.slice.call(document.querySelectorAll('[data-ui]')),
+    paperBtns: Array.prototype.slice.call(document.querySelectorAll('[data-paper]')),
     sensSlider: $('#sensSlider'),
     sensLabel: $('#sensLabel'),
     band: $('#marginBand'),
@@ -99,6 +100,7 @@
   var smoothLevel = 1;
   var pressureSens = 0.65;
   var uiScale = 1.15;
+  var paperPref = 'a4';
   var SMOOTH_ALPHA = { 0: 1, 1: 0.55, 2: 0.4, 3: 0.28 };
   var smoothPt = null;
   var lastRaw = null;
@@ -132,6 +134,15 @@
     return doc.pages[clamp(doc.active, 0, doc.pages.length - 1)];
   }
 
+  /* Sheet size lives on the document, so a note can be A4 or screen-shaped. */
+  function pageW() {
+    return doc.pageW || M.PAGE_W;
+  }
+
+  function pageH() {
+    return doc.pageH || M.PAGE_H;
+  }
+
   function markDirty() {
     clearTimeout(saveTimer);
     saveTimer = setTimeout(function () { S.save(doc); }, 300);
@@ -146,6 +157,7 @@
         if (typeof raw.smooth === 'number') smoothLevel = clamp(Math.round(raw.smooth), 0, 3);
         if (typeof raw.sens === 'number') pressureSens = clamp(raw.sens, 0, 1);
         if (typeof raw.ui === 'number') uiScale = clamp(raw.ui, 1, 1.35);
+        if (raw.paper === 'a4' || raw.paper === 'a4l' || raw.paper === 'screen') paperPref = raw.paper;
       }
     } catch (e) { /* ignore */ }
     R.setPressureSensitivity(pressureSens);
@@ -186,7 +198,7 @@
 
   function savePrefs() {
     try {
-      localStorage.setItem(PREFS_KEY, JSON.stringify({ smooth: smoothLevel, sens: pressureSens, ui: uiScale }));
+      localStorage.setItem(PREFS_KEY, JSON.stringify({ smooth: smoothLevel, sens: pressureSens, ui: uiScale, paper: paperPref }));
     } catch (e) { /* ignore */ }
   }
 
@@ -223,7 +235,7 @@
   /* Backing scale, capped so a wide fit-to-width zoom cannot exhaust canvas memory. */
   function pageScale() {
     var raw = dpr * zoom;
-    var cap = Math.sqrt(12e6 / (M.PAGE_W * M.PAGE_H));
+    var cap = Math.sqrt(12e6 / (pageW() * pageH()));
     return Math.min(raw, cap);
   }
 
@@ -234,10 +246,12 @@
 
   function layout() {
     var s = pageScale();
-    var bw = Math.round(M.PAGE_W * s);
-    var bh = Math.round(M.PAGE_H * s);
-    var cssW = (M.PAGE_W * zoom) + 'px';
-    var cssH = (M.PAGE_H * zoom) + 'px';
+    var w = pageW();
+    var h = pageH();
+    var bw = Math.round(w * s);
+    var bh = Math.round(h * s);
+    var cssW = (w * zoom) + 'px';
+    var cssH = (h * zoom) + 'px';
     [el.base, el.live].forEach(function (canvas) {
       canvas.width = bw;
       canvas.height = bh;
@@ -253,7 +267,7 @@
     baseCtx.clearRect(0, 0, el.base.width, el.base.height);
     applyTransform(baseCtx);
     var page = activePage();
-    R.drawBackground(baseCtx, page.bg, M.PAGE_W, M.PAGE_H, 1 / zoom);
+    R.drawBackground(baseCtx, page.bg, pageW(), pageH(), 1 / zoom);
     for (var i = 0; i < page.strokes.length; i++) {
       R.renderStroke(baseCtx, page.strokes[i]);
     }
@@ -731,6 +745,9 @@
     el.uiBtns.forEach(function (btn) {
       btn.classList.toggle('is-active', Math.abs(parseFloat(btn.dataset.ui) - uiScale) < 0.001);
     });
+    el.paperBtns.forEach(function (btn) {
+      btn.classList.toggle('is-active', btn.dataset.paper === (doc.paper || 'a4'));
+    });
     syncPips();
   }
 
@@ -795,14 +812,14 @@
 
   /* The sheet may be zoomed well past 100% so it keeps filling very wide
      (or browser-zoomed-out) windows; the backing store caps itself in pageScale(). */
-  var MAX_ZOOM = 6;
+  var MAX_ZOOM = 8;
   var MIN_ZOOM = 0.35;
 
   /* Width needed for the sheet to fill the window: the paper never gets
      narrower than the screen, so zooming out stops at "full width". */
   function fitZoom() {
-    var w = el.stage.clientWidth || window.innerWidth || M.PAGE_W;
-    return w / M.PAGE_W;
+    var w = el.stage.clientWidth || window.innerWidth || pageW();
+    return w / pageW();
   }
 
   function setZoom(next) {
@@ -837,6 +854,17 @@
     renderLive();
     updateZoomLabel();
     fitMode = true;
+    /* A scrollbar that appears or disappears with the new layout changes
+       clientWidth. Measure again and refit, so the sheet always ends up
+       exactly as wide as the window (never a 10px strip, never a h-scroll). */
+    var afterW = el.stage.clientWidth;
+    if (afterW > 0 && afterW !== availW) {
+      zoom = clamp(afterW / pageW(), MIN_ZOOM, MAX_ZOOM);
+      layout();
+      renderBase();
+      renderLive();
+      updateZoomLabel();
+    }
   }
 
   /* Safety net for tabs that finish loading while hidden: refit once the
@@ -845,6 +873,61 @@
     if (!fitMode) return;
     if (el.stage.clientWidth <= 0) return;
     if (Math.abs(zoom - fitZoom()) > 0.01) fitStage();
+  }
+
+  /* ------------------------------------------------------------ sheet size */
+
+  /* Real usable area: the bottom padding of the stage is scroll runway, not paper. */
+  function stageSize() {
+    var cs = getComputedStyle(el.stage);
+    var padB = parseFloat(cs.paddingBottom) || 0;
+    return {
+      w: Math.round(el.stage.clientWidth),
+      h: Math.round(el.stage.clientHeight - padB)
+    };
+  }
+
+  function applyPaper(kind) {
+    doc.paper = kind;
+    if (kind === 'screen') {
+      var size = stageSize();
+      doc.pageW = Math.max(M.MIN_PAGE, size.w);
+      doc.pageH = Math.max(M.MIN_PAGE, size.h);
+    } else {
+      var dims = M.PAPERS[kind] || M.PAPERS.a4;
+      doc.pageW = dims[0];
+      doc.pageH = dims[1];
+    }
+  }
+
+  /* "Vừa màn hình": follow window resizes so one page always fits the view. */
+  function syncScreenPaper() {
+    if (doc.paper !== 'screen') return false;
+    var size = stageSize();
+    if (size.w < M.MIN_PAGE || size.h < M.MIN_PAGE) return false;
+    if (Math.abs(doc.pageW - size.w) < 2 && Math.abs(doc.pageH - size.h) < 2) return false;
+    doc.pageW = size.w;
+    doc.pageH = size.h;
+    return true;
+  }
+
+  function setPaper(kind) {
+    if (kind !== 'a4' && kind !== 'a4l' && kind !== 'screen') return;
+    if (doc.paper === kind) return;
+    pushHistory();
+    applyPaper(kind);
+    paperPref = kind;
+    savePrefs();
+    fitMode = true;
+    el.stage.scrollTop = 0;
+    el.stage.scrollLeft = 0;
+    fitStage();
+    if (kind === 'screen' && syncScreenPaper()) fitStage();
+    updateUI();
+    markDirty();
+    toast(kind === 'screen'
+      ? 'Trang giờ vừa khít màn hình — không phải cuộn'
+      : kind === 'a4l' ? 'Khổ A4 ngang — viết được dài hơn mỗi dòng' : 'Khổ A4 dọc');
   }
 
   function gotoPage(index) {
@@ -898,16 +981,16 @@
 
       var canvas = document.createElement('canvas');
       var w = 82;
-      var h = Math.round(w * M.PAGE_H / M.PAGE_W);
+      var h = Math.round(w * pageH() / pageW());
       canvas.width = w * 2;
       canvas.height = h * 2;
       canvas.style.width = w + 'px';
       canvas.style.height = h + 'px';
 
       var ctx = canvas.getContext('2d');
-      var s = canvas.width / M.PAGE_W;
-      ctx.setTransform(s, 0, 0, s, 0, 0);
-      R.drawBackground(ctx, page.bg, M.PAGE_W, M.PAGE_H, 0.9 / s);
+      var s = canvas.width / pageW();
+      ctx.setTransform(s, 0, 0, canvas.height / pageH(), 0, 0);
+      R.drawBackground(ctx, page.bg, pageW(), pageH(), 0.9 / s);
       for (var i = 0; i < page.strokes.length; i++) R.renderStroke(ctx, page.strokes[i]);
 
       var label = document.createElement('span');
@@ -950,7 +1033,7 @@
   }
 
   function exportPng() {
-    X.exportPNG(activePage(), safeName() + '-trang-' + (doc.active + 1)).catch(function (err) {
+    X.exportPNG(activePage(), safeName() + '-trang-' + (doc.active + 1), pageW(), pageH()).catch(function (err) {
       alert(err.message);
     });
   }
@@ -996,7 +1079,10 @@
     if (!confirm('Tạo ghi chú mới? Nội dung hiện tại sẽ được thay thế (vẫn có thể hoàn tác).')) return;
     pushHistory();
     doc = M.createDoc();
-    renderAll();
+    applyPaper(paperPref);
+    fitMode = true;
+    fitStage();
+    updateUI();
     markDirty();
   }
 
@@ -1085,6 +1171,10 @@
 
   el.bgs.forEach(function (btn) {
     btn.addEventListener('click', function () { setBackground(btn.dataset.bg); });
+  });
+
+  el.paperBtns.forEach(function (btn) {
+    btn.addEventListener('click', function () { setPaper(btn.dataset.paper); });
   });
 
   el.undo.addEventListener('click', undo);
@@ -1315,6 +1405,13 @@
       renderBase();
       renderLive();
     }
+    if (syncScreenPaper()) {
+      fitMode = true;
+      fitStage();
+      if (syncScreenPaper()) fitStage();
+      markDirty();
+      return;
+    }
     if (fitMode || zoom < fitZoom()) fitStage();
   });
 
@@ -1333,9 +1430,10 @@
       lastStage.w = w;
       lastStage.h = h;
       fitBarTitle();
-      if (fitMode || (w > 0 && h > 0 && zoom < fitZoom())) {
-        if (w > 0 && h > 0) fitStage();
-      }
+      if (w <= 0 || h <= 0) return;
+      if (syncScreenPaper()) fitMode = true;
+      if (fitMode || zoom < fitZoom()) fitStage();
+      if (syncScreenPaper()) fitStage();
     }).observe(el.stage);
   }
 
@@ -1359,7 +1457,9 @@
   var fitTries = 0;
   function bootFit() {
     if (el.stage.clientWidth > 0) {
+      if (syncScreenPaper()) fitMode = true;
       if (fitMode) fitStage();
+      else { renderBase(); renderLive(); }
       return;
     }
     if (fitTries++ < 60) setTimeout(bootFit, 60);

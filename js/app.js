@@ -11,6 +11,10 @@
   var clamp = function (v, a, b) { return v < a ? a : v > b ? b : v; };
 
   var el = {
+    topbar: document.querySelector('.topbar'),
+    tbLeft: document.querySelector('.tb-left'),
+    tbCenter: document.querySelector('.tb-center'),
+    tbRight: document.querySelector('.tb-right'),
     base: $('#baseCanvas'),
     live: $('#liveCanvas'),
     wrap: $('#pageWrap'),
@@ -55,6 +59,7 @@
     lineIcon: $('#lineIconPath'),
     lineOpts: Array.prototype.slice.call(document.querySelectorAll('[data-line]')),
     smoothBtns: Array.prototype.slice.call(document.querySelectorAll('[data-smooth]')),
+    uiBtns: Array.prototype.slice.call(document.querySelectorAll('[data-ui]')),
     sensSlider: $('#sensSlider'),
     sensLabel: $('#sensLabel'),
     band: $('#marginBand'),
@@ -92,6 +97,7 @@
   /* Handwriting quality: 0 = raw, 1 = light, 3 = strong stabiliser. */
   var smoothLevel = 1;
   var pressureSens = 0.65;
+  var uiScale = 1.15;
   var SMOOTH_ALPHA = { 0: 1, 1: 0.55, 2: 0.4, 3: 0.28 };
   var smoothPt = null;
   var lastRaw = null;
@@ -138,14 +144,36 @@
       if (raw) {
         if (typeof raw.smooth === 'number') smoothLevel = clamp(Math.round(raw.smooth), 0, 3);
         if (typeof raw.sens === 'number') pressureSens = clamp(raw.sens, 0, 1);
+        if (typeof raw.ui === 'number') uiScale = clamp(raw.ui, 1, 1.35);
       }
     } catch (e) { /* ignore */ }
     R.setPressureSensitivity(pressureSens);
+    applyUiScale();
+  }
+
+  function applyUiScale() {
+    document.documentElement.style.setProperty('--ui', String(uiScale));
+    fitBarTitle();
+  }
+
+  /* The title sits in the middle of the bar. Bigger toolbars need more room,
+     so hide it (instead of letting it collide) when the side groups are wide. */
+  function fitBarTitle() {
+    if (!el.topbar || !el.tbCenter) return;
+    var vw = el.topbar.clientWidth;
+    var leftW = el.tbLeft.offsetWidth;
+    var rightW = el.tbRight.offsetWidth;
+    var room = vw - 2 * Math.max(leftW, rightW) - 20;
+    var tight = room < 150;
+    el.tbCenter.classList.toggle('is-tight', tight);
+    el.tbCenter.style.maxWidth = tight ? '0px' : room + 'px';
+    var countW = el.titleCount ? el.titleCount.offsetWidth + 6 : 24;
+    el.title.style.maxWidth = tight ? '0px' : Math.max(70, room - countW) + 'px';
   }
 
   function savePrefs() {
     try {
-      localStorage.setItem(PREFS_KEY, JSON.stringify({ smooth: smoothLevel, sens: pressureSens }));
+      localStorage.setItem(PREFS_KEY, JSON.stringify({ smooth: smoothLevel, sens: pressureSens, ui: uiScale }));
     } catch (e) { /* ignore */ }
   }
 
@@ -512,6 +540,9 @@
       el.sensSlider.value = String(Math.round(pressureSens * 100));
     }
     if (el.sensLabel) el.sensLabel.textContent = String(Math.round(pressureSens * 100));
+    el.uiBtns.forEach(function (btn) {
+      btn.classList.toggle('is-active', Math.abs(parseFloat(btn.dataset.ui) - uiScale) < 0.001);
+    });
     syncPips();
   }
 
@@ -837,6 +868,15 @@
     savePrefs();
   });
 
+  el.uiBtns.forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      uiScale = clamp(parseFloat(btn.dataset.ui) || 1, 1, 1.35);
+      applyUiScale();
+      updateUI();
+      savePrefs();
+    });
+  });
+
   function togglePages() {
     var willOpen = el.pagesPop.hidden;
     closePopovers(el.pagesPop);
@@ -943,6 +983,7 @@
   });
 
   window.addEventListener('resize', function () {
+    fitBarTitle();
     if (fitMode) fitStage();
   });
 
@@ -955,6 +996,7 @@
       if (w === lastStage.w && h === lastStage.h) return;
       lastStage.w = w;
       lastStage.h = h;
+      fitBarTitle();
       if (fitMode && w > 0 && h > 0) fitStage();
     }).observe(el.stage);
   }
@@ -971,6 +1013,7 @@
   syncSlider();
   setColor(color);
   layout();
+  fitBarTitle();
   renderBase();
   updateZoomLabel();
   updateUI();

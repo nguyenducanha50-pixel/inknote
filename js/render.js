@@ -12,9 +12,9 @@
 
     var y, x;
     if (bg === 'lined') {
-      var gap = 32;
-      ctx.strokeStyle = '#d7e5f8';
-      ctx.lineWidth = unit;
+      var gap = 42;
+      ctx.strokeStyle = '#bed8f7';
+      ctx.lineWidth = unit * 1.35;
       ctx.beginPath();
       for (y = gap; y < h; y += gap) {
         ctx.moveTo(0, y + unit / 2);

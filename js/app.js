@@ -66,12 +66,14 @@
 
   var SIZE_RANGE = {
     pen: [1, 24, 0.5],
+    line: [1, 24, 0.5],
     highlighter: [8, 48, 1],
     eraser: [6, 64, 1]
   };
   /* Three quick sizes per tool, shown as the small dots in the top bar. */
   var QUICK = {
     pen: [1.6, 3.2, 6.4],
+    line: [1.6, 3.2, 6.4],
     highlighter: [12, 20, 32],
     eraser: [10, 18, 30]
   };
@@ -82,13 +84,14 @@
   var doc = bootDoc();
   var tool = 'pen';
   var color = '#111111';
-  var sizes = { pen: 3.2, highlighter: 20, eraser: 18 };
+  var sizes = { pen: 3.2, line: 3.2, highlighter: 20, eraser: 18 };
   var lineStyle = 'solid';
   var zoom = 1;
   var fitMode = true;
   var dpr = Math.min(window.devicePixelRatio || 1, 2);
 
   var current = null;
+  var straightFrom = null;
   var erasing = false;
   var eraseSnapshot = null;
   var eraseRemoved = false;
@@ -292,10 +295,17 @@
       color: color,
       size: sizes[tool],
       pressureMode: e.pointerType === 'pen' ? 'real' : 'none',
-      style: tool === 'pen' ? lineStyle : 'solid',
+      style: tool === 'highlighter' ? 'solid' : lineStyle,
       points: []
     };
-    addPoint(pt, pressureOf(e));
+    /* Straight-line mode: the pen tool behaves like a ruler for this stroke
+       (also available by holding Shift with the normal pen). */
+    straightFrom = (tool === 'line' || e.shiftKey) ? { x: pt.x, y: pt.y } : null;
+    if (straightFrom) {
+      current.points = [{ x: pt.x, y: pt.y, p: pressureOf(e) }];
+    } else {
+      addPoint(pt, pressureOf(e));
+    }
     renderLive();
   }
 
@@ -343,7 +353,16 @@
   function onPointerMove(e) {
     if (current) {
       autoScroll(e);
-      addPoint(pagePoint(e), pressureOf(e));
+      var pt = pagePoint(e);
+      var pr = pressureOf(e);
+      if (straightFrom) {
+        current.points = [
+          { x: straightFrom.x, y: straightFrom.y, p: current.points[0].p },
+          { x: pt.x, y: pt.y, p: pr }
+        ];
+      } else {
+        addPoint(pt, pr);
+      }
       renderLive();
       return;
     }
@@ -362,6 +381,7 @@
 
   function onPointerUp() {
     stopAutoScroll();
+    straightFrom = null;
     if (current) {
       var finished = current;
       current = null;
@@ -392,6 +412,7 @@
 
   function onPointerCancel() {
     stopAutoScroll();
+    straightFrom = null;
     if (current) {
       current = null;
       clearLive();
@@ -827,6 +848,7 @@
 
     switch (e.key) {
       case 'p': case 'P': setTool('pen'); break;
+      case 's': case 'S': setTool('line'); break;
       case 'h': case 'H': setTool('highlighter'); break;
       case 'e': case 'E': setTool('eraser'); break;
       case 'l': case 'L': {

@@ -151,8 +151,18 @@
     applyUiScale();
   }
 
+  /* Browser zoom (Ctrl +/-) scales every CSS pixel. The toolbar must keep the
+     size the user picked, so compensate for that scale in the bar only. */
+  var baseDpr = window.devicePixelRatio || 1;
+
+  function browserZoom() {
+    var d = window.devicePixelRatio || 1;
+    return clamp(d / baseDpr, 0.55, 2);
+  }
+
   function applyUiScale() {
-    document.documentElement.style.setProperty('--ui', String(uiScale));
+    var eff = uiScale / browserZoom();
+    document.documentElement.style.setProperty('--ui', String(Math.round(eff * 1000) / 1000));
     fitBarTitle();
   }
 
@@ -602,8 +612,13 @@
     syncSlider();
   }
 
+  /* The sheet may be zoomed well past 100% so it keeps filling very wide
+     (or browser-zoomed-out) windows; the backing store caps itself in pageScale(). */
+  var MAX_ZOOM = 6;
+  var MIN_ZOOM = 0.35;
+
   function setZoom(next) {
-    zoom = clamp(next, 0.35, 3);
+    zoom = clamp(next, MIN_ZOOM, MAX_ZOOM);
     fitMode = false;
     layout();
     renderBase();
@@ -611,11 +626,23 @@
     updateZoomLabel();
   }
 
+  /* Zoom the paper around a screen point, so the spot under the cursor or
+     between the fingers stays put. The toolbar is never scaled. */
+  function zoomAt(next, clientX, clientY) {
+    var before = el.wrap.getBoundingClientRect();
+    var px = (clientX - before.left) / zoom;
+    var py = (clientY - before.top) / zoom;
+    setZoom(next);
+    var after = el.wrap.getBoundingClientRect();
+    el.stage.scrollLeft += after.left + px * zoom - clientX;
+    el.stage.scrollTop += after.top + py * zoom - clientY;
+  }
+
   /* Paper fills the window like a notepad: fit the width, scroll vertically. */
   function fitStage() {
     var availW = el.stage.clientWidth;
     if (availW <= 0) return;
-    zoom = clamp(availW / M.PAGE_W, 0.35, 3);
+    zoom = clamp(availW / M.PAGE_W, MIN_ZOOM, MAX_ZOOM);
     layout();
     renderBase();
     renderLive();
@@ -785,6 +812,55 @@
     eraserPos = null;
     renderLive();
   });
+
+  /* ---- zooming only the paper: Ctrl+wheel, trackpad pinch, two fingers ---- */
+
+  el.stage.addEventListener('wheel', function (e) {
+    if (!e.ctrlKey && !e.metaKey) return;
+    e.preventDefault();
+    var delta = e.deltaY;
+    if (e.deltaMode === 1) delta *= 16;
+    else if (e.deltaMode === 2) delta *= 400;
+    zoomAt(zoom * Math.exp(-delta * 0.0012), e.clientX, e.clientY);
+  }, { passive: false });
+
+  var pinch = null;
+  var lastPinchZoom = 0;
+
+  function touchMid(t) {
+    return {
+      x: (t[0].clientX + t[1].clientX) / 2,
+      y: (t[0].clientY + t[1].clientY) / 2
+    };
+  }
+
+  function touchDist(t) {
+    var dx = t[0].clientX - t[1].clientX;
+    var dy = t[0].clientY - t[1].clientY;
+    return Math.sqrt(dx * dx + dy * dy) || 1;
+  }
+
+  el.stage.addEventListener('touchstart', function (e) {
+    if (e.touches.length !== 2) return;
+    e.preventDefault();
+    pinch = { dist: touchDist(e.touches), zoom: zoom };
+  }, { passive: false });
+
+  el.stage.addEventListener('touchmove', function (e) {
+    if (!pinch || e.touches.length !== 2) return;
+    e.preventDefault();
+    var now = Date.now();
+    if (now - lastPinchZoom < 30) return;
+    lastPinchZoom = now;
+    var mid = touchMid(e.touches);
+    zoomAt(pinch.zoom * (touchDist(e.touches) / pinch.dist), mid.x, mid.y);
+  }, { passive: false });
+
+  function endPinch(e) {
+    if (!e.touches || e.touches.length < 2) pinch = null;
+  }
+  el.stage.addEventListener('touchend', endPinch);
+  el.stage.addEventListener('touchcancel', endPinch);
 
   el.tools.forEach(function (btn) {
     btn.addEventListener('click', function () { setTool(btn.dataset.tool); });
@@ -985,7 +1061,14 @@
   });
 
   window.addEventListener('resize', function () {
-    fitBarTitle();
+    applyUiScale();
+    var nextDpr = Math.min(window.devicePixelRatio || 1, 2);
+    if (nextDpr !== dpr) {
+      dpr = nextDpr;
+      layout();
+      renderBase();
+      renderLive();
+    }
     if (fitMode) fitStage();
   });
 

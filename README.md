@@ -26,6 +26,7 @@ Trình duyệt nên dùng: Chrome / Edge / Cobalt / Brave (bản mới). Bút c�
 | --- | --- |
 | Bút | Nét đổi độ dày theo áp lực bút, làm mượt điểm, 7 màu nhanh + màu tuỳ chọn |
 | Cỡ nét | 3 nút cỡ nhanh trên thanh trên (mảnh / vừa / đậm) + thanh trượt chỉnh chi tiết |
+| Kiểu nét | Nét liền, nét đứt, nét chấm, nét đứt–chấm — dùng để vẽ hình học (cạnh thấy / cạnh khuất, trục) |
 | Dạ quang | Nét trong suốt để tô sáng, độ dày riêng |
 | Tẩy | Tẩy theo từng nét (quét qua nét nào xoá nét đó), có vòng tròn con trỏ |
 | Trang | Danh sách trang có ảnh thu nhỏ, thêm / nhân bản / xoá, chuyển trang bằng mũi tên hai bên |
@@ -51,6 +52,7 @@ tràn viền, không khung, không lề đỏ.
 | Phím | Tác dụng |
 | --- | --- |
 | `P` / `H` / `E` | Bút / Dạ quang / Tẩy |
+| `L` | Đổi kiểu nét: liền → đứt → chấm → đứt–chấm |
 | `Ctrl+Z` / `Ctrl+Shift+Z` (hoặc `Ctrl+Y`) | Hoàn tác / Làm lại |
 | `[` `]` | Giảm / tăng độ dày nét |
 | `←` `→`, `PageUp` `PageDown` | Trang trước / trang sau |

@@ -72,6 +72,11 @@
       return;
     }
 
+    if (stroke.style && stroke.style !== 'solid') {
+      renderDashedPen(ctx, stroke);
+      return;
+    }
+
     var left = new Array(n);
     var right = new Array(n);
     for (i = 0; i < n; i++) {
@@ -101,6 +106,42 @@
 
     roundCap(ctx, pts[0].x, pts[0].y, widthFor(stroke, pts[0].p) / 2);
     roundCap(ctx, pts[n - 1].x, pts[n - 1].y, widthFor(stroke, pts[n - 1].p) / 2);
+  }
+
+  /* Dashed / dotted / dash-dot pens: follow the centre line and let the dash
+     pattern scale with the stroke width, so it looks the same at any zoom. */
+  function dashPattern(stroke) {
+    var w = Math.max(stroke.size, 1.8);
+    if (stroke.style === 'dashed') return [w * 3, w * 2.4];
+    if (stroke.style === 'dotted') return [0.01, w * 2.2];
+    if (stroke.style === 'dashdot') return [w * 3.2, w * 1.9, 0.01, w * 1.9];
+    return null;
+  }
+
+  function renderDashedPen(ctx, stroke) {
+    var pts = stroke.points;
+    var n = pts.length;
+    var i;
+    var total = 0;
+    for (i = 0; i < n; i++) total += widthFor(stroke, pts[i].p);
+    ctx.lineWidth = Math.max(total / n, 1.1);
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.setLineDash(dashPattern(stroke));
+    ctx.beginPath();
+    ctx.moveTo(pts[0].x, pts[0].y);
+    if (n === 2) {
+      ctx.lineTo(pts[1].x, pts[1].y);
+    } else {
+      for (i = 1; i < n - 1; i++) {
+        var mx = (pts[i].x + pts[i + 1].x) / 2;
+        var my = (pts[i].y + pts[i + 1].y) / 2;
+        ctx.quadraticCurveTo(pts[i].x, pts[i].y, mx, my);
+      }
+      ctx.lineTo(pts[n - 1].x, pts[n - 1].y);
+    }
+    ctx.stroke();
+    ctx.setLineDash([]);
   }
 
   function renderHighlighter(ctx, stroke) {

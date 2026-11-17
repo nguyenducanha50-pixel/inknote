@@ -39,7 +39,8 @@ Trình duyệt nên dùng: Chrome / Edge / Cobalt / Brave (bản mới). Bút c�
 | Lưu phiên | Tự lưu vào `localStorage` sau mỗi thay đổi, tự khôi phục khi mở lại |
 | Xuất | PNG (trang hiện tại, 2x), PDF (toàn bộ trang, ảnh JPEG nhúng, không thư viện ngoài) |
 | Tệp | Xuất / nhập `.json` để sao lưu hoặc chuyển máy |
-| Xem | Zoom 35–300%, nút "Vừa" tự canh trang theo khung |
+| Xem | Zoom giấy 35–600%, nút "Vừa" canh giấy theo chiều rộng khung (giấy luôn phủ kín bề ngang cửa sổ) |
+| Phóng giấy | `Ctrl` + lăn chuột hoặc chụm 2 ngón trên giấy để phóng to / thu nhỏ đúng chỗ đang trỏ — **thanh công cụ giữ nguyên kích thước** |
 | Cỡ giao diện | Nhỏ / Vừa / Lớn trong ⚙ — đổi độ lớn thanh công cụ, nhớ cho lần sau |
 
 ## Giao diện
@@ -54,6 +55,10 @@ Thanh công cụ cao 42 / 48 / 57 px (Nhỏ / Vừa / Lớn) để vẫn dễ b�
 trang; mọi kích thước trong thanh đều theo biến CSS `--ui` nên chỉnh một chỗ là
 toàn bộ icon, chấm màu, cỡ nét, tên ghi chú to nhỏ theo. Khi cửa sổ hẹp, tên ghi
 chú tự ẩn để không đè lên cụm công cụ.
+
+Thanh công cụ **không bao giờ co giãn theo giấy**: phóng to / thu nhỏ chỉ tác
+động lên trang giấy. Kể cả khi thu phóng trình duyệt (`Ctrl` `+` / `Ctrl` `-`),
+thanh được bù lại theo `devicePixelRatio` để giữ nguyên kích thước thật.
 
 ## Phím tắt
 

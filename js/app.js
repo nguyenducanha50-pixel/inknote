@@ -157,7 +157,7 @@
         if (typeof raw.smooth === 'number') smoothLevel = clamp(Math.round(raw.smooth), 0, 3);
         if (typeof raw.sens === 'number') pressureSens = clamp(raw.sens, 0, 1);
         if (typeof raw.ui === 'number') uiScale = clamp(raw.ui, 1, 1.35);
-        if (raw.paper === 'a4' || raw.paper === 'a4l' || raw.paper === 'screen') paperPref = raw.paper;
+        if (raw.paper === 'screen' || M.PAPERS[raw.paper]) paperPref = raw.paper;
       }
     } catch (e) { /* ignore */ }
     R.setPressureSensitivity(pressureSens);
@@ -486,6 +486,7 @@
     renderBase();
     renderLive();
     updateUI();
+    growLongPage();
   }
 
   function onPointerDown(e) {
@@ -651,6 +652,7 @@
         applyTransform(baseCtx);
         R.renderStroke(baseCtx, finished);
         markDirty();
+        growLongPage();
       }
       clearLive();
       updateUI();
@@ -911,8 +913,17 @@
     return true;
   }
 
+  var PAPER_LABEL = {
+    a4: 'A4 dọc',
+    a4l: 'A4 ngang',
+    a3: 'A3 dọc',
+    a3l: 'A3 ngang',
+    long: 'trang dài',
+    screen: 'vừa màn hình'
+  };
+
   function setPaper(kind) {
-    if (kind !== 'a4' && kind !== 'a4l' && kind !== 'screen') return;
+    if (kind !== 'screen' && !M.PAPERS[kind]) return;
     if (doc.paper === kind) return;
     pushHistory();
     applyPaper(kind);
@@ -925,9 +936,35 @@
     if (kind === 'screen' && syncScreenPaper()) fitStage();
     updateUI();
     markDirty();
-    toast(kind === 'screen'
-      ? 'Trang giờ vừa khít màn hình — không phải cuộn'
-      : kind === 'a4l' ? 'Khổ A4 ngang — viết được dài hơn mỗi dòng' : 'Khổ A4 dọc');
+    toast(kind === 'long'
+      ? 'Trang dài: viết tới đáy là tự nối dài thêm'
+      : kind === 'screen'
+        ? 'Trang giờ vừa khít màn hình — không phải cuộn'
+        : 'Khổ ' + PAPER_LABEL[kind]);
+  }
+
+  /* "Trang dài" keeps extending while the pen approaches the bottom, so a long
+     proof can live on one continuous sheet. */
+  var LONG_STEP = 561;
+
+  function growLongPage() {
+    if (doc.paper !== 'long') return;
+    var page = activePage();
+    var last = page.strokes[page.strokes.length - 1];
+    if (!last) return;
+    var maxY = 0;
+    for (var i = 0; i < last.points.length; i++) {
+      if (last.points[i].y > maxY) maxY = last.points[i].y;
+    }
+    if (maxY < pageH() - 90) return;
+    var steps = Math.ceil((maxY + 320 - pageH()) / LONG_STEP);
+    if (steps < 1) steps = 1;
+    if (doc.pageH >= M.MAX_PAGE) return;
+    doc.pageH = Math.min(M.MAX_PAGE, doc.pageH + steps * LONG_STEP);
+    layout();
+    renderBase();
+    renderLive();
+    markDirty();
   }
 
   function gotoPage(index) {

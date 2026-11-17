@@ -24,15 +24,27 @@ Trình duyệt nên dùng: Chrome / Edge / Cobalt / Brave (bản mới). Bút c�
 
 | Nhóm | Chi tiết |
 | --- | --- |
-| Bút | Nét đổi độ dày theo áp lực bút, làm mượt điểm, màu tuỳ chọn (8 màu nhanh + color picker) |
+| Bút | Nét đổi độ dày theo áp lực bút, làm mượt điểm, 7 màu nhanh + màu tuỳ chọn |
+| Cỡ nét | 3 nút cỡ nhanh trên thanh trên (mảnh / vừa / đậm) + thanh trượt chỉnh chi tiết |
 | Dạ quang | Nét trong suốt để tô sáng, độ dày riêng |
 | Tẩy | Tẩy theo từng nét (quét qua nét nào xoá nét đó), có vòng tròn con trỏ |
-| Trang | Thêm / nhân bản / xoá trang, chuyển trang, giấy trắng – kẻ dòng – kẻ ô – chấm |
+| Trang | Danh sách trang có ảnh thu nhỏ, thêm / nhân bản / xoá, chuyển trang bằng mũi tên hai bên |
+| Giấy | Trắng – kẻ dòng – kẻ ô – chấm, tràn viền như sổ tay |
+| Tự cuộn | Viết tới dải tím ở đáy là trang tự chạy lên (giữ bút trong dải là cuộn liên tục) |
+| Lòng bàn tay | Bút cảm ứng vẽ, ngón tay chỉ cuộn trang — không bị chấm mực khi tì tay |
 | Hoàn tác | Undo / Redo 60 bước, áp dụng cho cả vẽ, tẩy, đổi trang, đổi nền |
 | Lưu phiên | Tự lưu vào `localStorage` sau mỗi thay đổi, tự khôi phục khi mở lại |
 | Xuất | PNG (trang hiện tại, 2x), PDF (toàn bộ trang, ảnh JPEG nhúng, không thư viện ngoài) |
 | Tệp | Xuất / nhập `.json` để sao lưu hoặc chuyển máy |
-| Xem | Zoom 35–200%, nút "Vừa" tự canh trang theo khung |
+| Xem | Zoom 35–300%, nút "Vừa" tự canh trang theo khung |
+
+## Giao diện
+
+Bám theo Scrble Ink: thanh trên rất mỏng, tên ghi chú ở giữa kèm số trang trong
+ngoặc, cụm chấm màu bên phải (chấm đang chọn phóng to có dấu ✓), ba chấm cỡ nét,
+ba công cụ bút / dạ quang / tẩy và nút cài đặt. Đáy màn hình là dải tím đánh dấu
+vùng tự cuộn, hai mũi tên tam giác hai bên để chuyển trang. Giấy kẻ dòng chạy
+tràn viền, không khung, không lề đỏ.
 
 ## Phím tắt
 
@@ -50,7 +62,7 @@ Trình duyệt nên dùng: Chrome / Edge / Cobalt / Brave (bản mới). Bút c�
 
 ```
 scrble-ink/
-├─ index.html        giao diện: thanh công cụ trên, giấy tràn viền, thanh dưới (trang/giấy/zoom)
+├─ index.html        giao diện: thanh trên mỏng, giấy tràn viền, dải tím tự cuộn ở đáy
 ├─ css/styles.css    giao diện sáng, tối ưu cho bút và màn hình cảm ứng
 ├─ js/model.js       mô hình dữ liệu: trang, nét, điểm có áp lực; kiểm tra dữ liệu nhập
 ├─ js/render.js      vẽ giấy nền + nét biến thiên độ dày, hit-test cho tẩy

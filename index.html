@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>InkNote — ghi chú bằng bút</title>
-<link rel="stylesheet" href="css/styles.css?v=5" />
+<link rel="stylesheet" href="css/styles.css?v=6" />
 </head>
 <body>
 <div class="app">
@@ -59,6 +59,10 @@
         <button class="pip" data-pip="2" aria-label="Nét đậm"><span></span></button>
       </div>
 
+      <button id="btnLine" class="ib line-btn" title="Kiểu nét: liền / đứt / chấm (L)" aria-haspopup="dialog" aria-expanded="false">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path id="lineIconPath" d="M3 12h18" /></svg>
+      </button>
+
       <button class="ib tool" data-tool="pen" aria-pressed="true" title="Bút (P)">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4.6 19.4l4.1-1.1L18.9 8.1a1.9 1.9 0 0 0 0-2.7l-1.3-1.3a1.9 1.9 0 0 0-2.7 0L4.7 14.3z" /><path d="M14 5.4l4.6 4.6" /></svg>
       </button>
@@ -92,6 +96,30 @@
         <button id="pDup" class="text-btn">Nhân bản</button>
         <button id="pDel" class="text-btn">Xoá</button>
       </div>
+    </div>
+
+    <div class="popover right" id="linePop" role="dialog" hidden>
+      <div class="pop-title">Kiểu nét</div>
+      <button class="line-opt is-active" data-line="solid">
+        <svg viewBox="0 0 46 14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M3 7h40" /></svg>
+        <span>Liền</span>
+        <em>cạnh thấy</em>
+      </button>
+      <button class="line-opt" data-line="dashed">
+        <svg viewBox="0 0 46 14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-dasharray="7 5"><path d="M3 7h40" /></svg>
+        <span>Đứt</span>
+        <em>cạnh khuất</em>
+      </button>
+      <button class="line-opt" data-line="dotted">
+        <svg viewBox="0 0 46 14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-dasharray="0.1 5"><path d="M3 7h40" /></svg>
+        <span>Chấm</span>
+        <em>trục, khuất</em>
+      </button>
+      <button class="line-opt" data-line="dashdot">
+        <svg viewBox="0 0 46 14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-dasharray="8 4 0.1 4"><path d="M3 7h40" /></svg>
+        <span>Đứt chấm</span>
+        <em>trục đối xứng</em>
+      </button>
     </div>
 
     <div class="popover right" id="setPop" role="dialog" hidden>
@@ -163,10 +191,10 @@
 
 <noscript>Ứng dụng cần JavaScript để vẽ. Hãy bật JavaScript rồi tải lại trang.</noscript>
 
-<script src="js/model.js?v=5"></script>
-<script src="js/storage.js?v=5"></script>
-<script src="js/render.js?v=5"></script>
-<script src="js/export.js?v=5"></script>
-<script src="js/app.js?v=5"></script>
+<script src="js/model.js?v=6"></script>
+<script src="js/storage.js?v=6"></script>
+<script src="js/render.js?v=6"></script>
+<script src="js/export.js?v=6"></script>
+<script src="js/app.js?v=6"></script>
 </body>
 </html>

@@ -54,6 +54,9 @@
     linePop: $('#linePop'),
     lineIcon: $('#lineIconPath'),
     lineOpts: Array.prototype.slice.call(document.querySelectorAll('[data-line]')),
+    smoothBtns: Array.prototype.slice.call(document.querySelectorAll('[data-smooth]')),
+    sensSlider: $('#sensSlider'),
+    sensLabel: $('#sensLabel'),
     band: $('#marginBand'),
     pips: Array.prototype.slice.call(document.querySelectorAll('[data-pip]')),
     tools: Array.prototype.slice.call(document.querySelectorAll('[data-tool]')),
@@ -86,6 +89,12 @@
   var color = '#111111';
   var sizes = { pen: 3.2, line: 3.2, highlighter: 20, eraser: 18 };
   var lineStyle = 'solid';
+  /* Handwriting quality: 0 = raw, 1 = light, 3 = strong stabiliser. */
+  var smoothLevel = 1;
+  var pressureSens = 0.65;
+  var SMOOTH_ALPHA = { 0: 1, 1: 0.55, 2: 0.4, 3: 0.28 };
+  var smoothPt = null;
+  var lastRaw = null;
   var zoom = 1;
   var fitMode = true;
   var dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -119,6 +128,25 @@
   function markDirty() {
     clearTimeout(saveTimer);
     saveTimer = setTimeout(function () { S.save(doc); }, 300);
+  }
+
+  var PREFS_KEY = 'inknote:pen:v1';
+
+  function loadPrefs() {
+    try {
+      var raw = JSON.parse(localStorage.getItem(PREFS_KEY) || 'null');
+      if (raw) {
+        if (typeof raw.smooth === 'number') smoothLevel = clamp(Math.round(raw.smooth), 0, 3);
+        if (typeof raw.sens === 'number') pressureSens = clamp(raw.sens, 0, 1);
+      }
+    } catch (e) { /* ignore */ }
+    R.setPressureSensitivity(pressureSens);
+  }
+
+  function savePrefs() {
+    try {
+      localStorage.setItem(PREFS_KEY, JSON.stringify({ smooth: smoothLevel, sens: pressureSens }));
+    } catch (e) { /* ignore */ }
   }
 
   function snapshot() {
@@ -298,6 +326,8 @@
       style: tool === 'highlighter' ? 'solid' : lineStyle,
       points: []
     };
+    smoothPt = { x: pt.x, y: pt.y };
+    lastRaw = { x: pt.x, y: pt.y, p: pressureOf(e) };
     /* Straight-line mode: the pen tool behaves like a ruler for this stroke
        (also available by holding Shift with the normal pen). */
     straightFrom = (tool === 'line' || e.shiftKey) ? { x: pt.x, y: pt.y } : null;
@@ -361,7 +391,16 @@
           { x: pt.x, y: pt.y, p: pr }
         ];
       } else {
-        addPoint(pt, pr);
+        lastRaw = { x: pt.x, y: pt.y, p: pr };
+        var alpha = SMOOTH_ALPHA[smoothLevel] || 1;
+        if (alpha < 1) {
+          smoothPt.x += (pt.x - smoothPt.x) * alpha;
+          smoothPt.y += (pt.y - smoothPt.y) * alpha;
+          addPoint(smoothPt, pr);
+        } else {
+          smoothPt = { x: pt.x, y: pt.y };
+          addPoint(pt, pr);
+        }
       }
       renderLive();
       return;
@@ -381,8 +420,10 @@
 
   function onPointerUp() {
     stopAutoScroll();
-    straightFrom = null;
+    var straight = !!straightFrom;
     if (current) {
+      /* Land on the real last sample so smoothing never shortens a letter. */
+      if (!straight && lastRaw) addPoint(lastRaw, lastRaw.p);
       var finished = current;
       current = null;
       if (finished.points.length) {
@@ -393,6 +434,9 @@
       }
       clearLive();
       updateUI();
+      straightFrom = null;
+      smoothPt = null;
+      lastRaw = null;
       return;
     }
     if (erasing) {
@@ -408,11 +452,16 @@
       clearLive();
       updateUI();
     }
+    straightFrom = null;
+    smoothPt = null;
+    lastRaw = null;
   }
 
   function onPointerCancel() {
     stopAutoScroll();
     straightFrom = null;
+    smoothPt = null;
+    lastRaw = null;
     if (current) {
       current = null;
       clearLive();
@@ -456,6 +505,13 @@
       btn.classList.toggle('is-active', btn.dataset.line === lineStyle);
     });
     if (el.lineIcon) el.lineIcon.setAttribute('stroke-dasharray', LINE_DASH[lineStyle] || 'none');
+    el.smoothBtns.forEach(function (btn) {
+      btn.classList.toggle('is-active', String(smoothLevel) === btn.dataset.smooth);
+    });
+    if (el.sensSlider && document.activeElement !== el.sensSlider) {
+      el.sensSlider.value = String(Math.round(pressureSens * 100));
+    }
+    if (el.sensLabel) el.sensLabel.textContent = String(Math.round(pressureSens * 100));
     syncPips();
   }
 
@@ -764,6 +820,23 @@
     });
   });
 
+  el.smoothBtns.forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      smoothLevel = parseInt(btn.dataset.smooth, 10) || 0;
+      updateUI();
+      savePrefs();
+    });
+  });
+
+  el.sensSlider.addEventListener('input', function () {
+    pressureSens = clamp(parseFloat(el.sensSlider.value) / 100, 0, 1);
+    R.setPressureSensitivity(pressureSens);
+    el.sensLabel.textContent = String(Math.round(pressureSens * 100));
+    renderBase();
+    renderLive();
+    savePrefs();
+  });
+
   function togglePages() {
     var willOpen = el.pagesPop.hidden;
     closePopovers(el.pagesPop);
@@ -894,6 +967,7 @@
 
   el.base.style.cursor = 'crosshair';
   el.title.value = doc.title;
+  loadPrefs();
   syncSlider();
   setColor(color);
   layout();

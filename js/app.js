@@ -42,6 +42,7 @@
     zoomIn: $('#zoomIn'),
     zoomOut: $('#zoomOut'),
     zoomFit: $('#zoomFit'),
+    btnFull: $('#btnFull'),
     color: $('#colorInput'),
     btnPages: $('#btnPages'),
     btnGrid: $('#btnGrid'),
@@ -270,12 +271,13 @@
     if (eraserPos && tool === 'eraser') {
       R.drawEraserRing(liveCtx, eraserPos.x, eraserPos.y, sizes.eraser / 2);
     }
+    drawVertexHandles(liveCtx);
   }
 
   function renderAll() {
     layout();
     renderBase();
-    clearLive();
+    renderLive();
     updateUI();
   }
 
@@ -338,6 +340,140 @@
     return removed;
   }
 
+  /* ------------------------------------------- draggable straight-line corners */
+
+  var vertexDrag = null;
+  var vertexHover = null;
+  var vertexHoverKey = '';
+
+  /* Straight lines are stored as two points: the endpoints become handles. */
+  function isStraight(stroke) {
+    return stroke.points.length === 2;
+  }
+
+  /* Nearest endpoint under the finger, plus every other endpoint sitting on the
+     same spot, so a shared corner of the figure moves as one piece. */
+  function grabVertex(x, y, tol) {
+    var page = activePage();
+    var best = null;
+    var bestD = tol * tol;
+    var i, j, s, dx, dy, d2;
+    for (i = 0; i < page.strokes.length; i++) {
+      s = page.strokes[i];
+      if (!isStraight(s)) continue;
+      for (j = 0; j < 2; j++) {
+        dx = s.points[j].x - x;
+        dy = s.points[j].y - y;
+        d2 = dx * dx + dy * dy;
+        if (d2 <= bestD) { bestD = d2; best = s.points[j]; }
+      }
+    }
+    if (!best) return null;
+    var snap = 7 / zoom + 1.2;
+    var group = [];
+    for (i = 0; i < page.strokes.length; i++) {
+      s = page.strokes[i];
+      if (!isStraight(s)) continue;
+      var pick = -1;
+      var pickD = Infinity;
+      for (j = 0; j < 2; j++) {
+        dx = s.points[j].x - best.x;
+        dy = s.points[j].y - best.y;
+        var d = Math.sqrt(dx * dx + dy * dy);
+        if (d < pickD) { pickD = d; pick = j; }
+      }
+      if (pick >= 0 && pickD <= snap) group.push({ s: s, i: pick });
+    }
+    return { group: group, x: best.x, y: best.y };
+  }
+
+  function vertexKey(g) {
+    if (!g) return '';
+    var parts = [];
+    for (var i = 0; i < g.group.length; i++) {
+      parts.push(g.group[i].s.id + ':' + g.group[i].i);
+    }
+    return parts.join(',');
+  }
+
+  function drawVertexHandles(ctx) {
+    if (tool !== 'move') return;
+    var page = activePage();
+    var r = 4.5 / zoom;
+    var active = vertexDrag || vertexHover;
+    var on = {};
+    if (active) {
+      for (var k = 0; k < active.group.length; k++) {
+        on[active.group[k].s.id + ':' + active.group[k].i] = true;
+      }
+    }
+    for (var i = 0; i < page.strokes.length; i++) {
+      var s = page.strokes[i];
+      if (!isStraight(s)) continue;
+      for (var j = 0; j < 2; j++) {
+        var p = s.points[j];
+        var hot = !!on[s.id + ':' + j];
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, hot ? r * 1.5 : r, 0, Math.PI * 2);
+        ctx.fillStyle = hot ? '#2f6fed' : '#ffffff';
+        ctx.fill();
+        ctx.lineWidth = 1.6 / zoom;
+        ctx.strokeStyle = hot ? '#1b57c9' : '#2f6fed';
+        ctx.stroke();
+      }
+    }
+  }
+
+  function beginVertexDrag(pt) {
+    var g = grabVertex(pt.x, pt.y, 15 / zoom);
+    if (!g) return false;
+    /* Keep the grab offset, so the corner does not jump under the finger. */
+    vertexDrag = {
+      group: g.group,
+      snapshot: snapshot(),
+      dx: g.x - pt.x,
+      dy: g.y - pt.y,
+      moved: false
+    };
+    vertexHover = g;
+    vertexHoverKey = vertexKey(g);
+    el.base.style.cursor = 'grabbing';
+    renderLive();
+    return true;
+  }
+
+  function moveVertex(pt) {
+    var g = vertexDrag;
+    var x = pt.x + g.dx;
+    var y = pt.y + g.dy;
+    for (var i = 0; i < g.group.length; i++) {
+      var it = g.group[i];
+      it.s.points[it.i].x = x;
+      it.s.points[it.i].y = y;
+    }
+    g.moved = true;
+    renderBase();
+    renderLive();
+    /* Follow the finger when the figure is dragged past the edge. */
+    autoScroll({ clientY: pt.y * zoom + el.base.getBoundingClientRect().top });
+  }
+
+  function endVertexDrag(cancelled) {
+    var g = vertexDrag;
+    vertexDrag = null;
+    el.base.style.cursor = 'move';
+    if (!g) return;
+    if (g.moved && !cancelled) {
+      undoStack.push(g.snapshot);
+      if (undoStack.length > 60) undoStack.shift();
+      redoStack.length = 0;
+      markDirty();
+    }
+    renderBase();
+    renderLive();
+    updateUI();
+  }
+
   function onPointerDown(e) {
     if (e.pointerType === 'mouse' && e.button !== 0) return;
     /* Palm rejection: fingers scroll the paper, only pen/mouse draws. */
@@ -345,6 +481,11 @@
     e.preventDefault();
     try { el.base.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
     var pt = pagePoint(e);
+
+    if (tool === 'move') {
+      beginVertexDrag(pt);
+      return;
+    }
 
     if (tool === 'eraser') {
       erasing = true;
@@ -421,6 +562,10 @@
   }
 
   function onPointerMove(e) {
+    if (vertexDrag) {
+      moveVertex(pagePoint(e));
+      return;
+    }
     if (current) {
       autoScroll(e);
       var pt = pagePoint(e);
@@ -455,11 +600,32 @@
     if (tool === 'eraser') {
       eraserPos = pagePoint(e);
       renderLive();
+      return;
+    }
+    if (tool === 'move') {
+      var spot = pagePoint(e);
+      var grab = grabVertex(spot.x, spot.y, 12 / zoom);
+      var key = vertexKey(grab);
+      if (key !== vertexHoverKey) {
+        vertexHoverKey = key;
+        vertexHover = grab;
+        el.base.style.cursor = grab ? 'grab' : 'move';
+        renderLive();
+      }
     }
   }
 
   function onPointerUp() {
     stopAutoScroll();
+    if (vertexDrag) {
+      endVertexDrag(false);
+      return;
+    }
+    /* The move tool never draws: just keep the handles painted. */
+    if (tool === 'move') {
+      renderLive();
+      return;
+    }
     var straight = !!straightFrom;
     if (current) {
       /* Land on the real last sample so smoothing never shortens a letter. */
@@ -502,6 +668,16 @@
     straightFrom = null;
     smoothPt = null;
     lastRaw = null;
+    if (vertexDrag) {
+      endVertexDrag(true);
+      return;
+    }
+    if (tool === 'move') {
+      vertexHover = null;
+      vertexHoverKey = '';
+      renderLive();
+      return;
+    }
     if (current) {
       current = null;
       clearLive();
@@ -561,10 +737,11 @@
   /* The active quick-size dot: nearest of the three preset widths for this tool. */
   function syncPips() {
     var list = QUICK[tool] || QUICK.pen;
+    var currentSize = typeof sizes[tool] === 'number' ? sizes[tool] : sizes.pen;
     var best = 0;
     var bestDiff = Infinity;
     for (var i = 0; i < list.length; i++) {
-      var diff = Math.abs(list[i] - sizes[tool]);
+      var diff = Math.abs(list[i] - currentSize);
       if (diff < bestDiff) { bestDiff = diff; best = i; }
     }
     el.pips.forEach(function (pip, i) {
@@ -581,6 +758,7 @@
 
   function syncSlider() {
     var range = SIZE_RANGE[tool];
+    if (!range) { el.slider.disabled = true; return; }
     el.slider.min = String(range[0]);
     el.slider.max = String(range[1]);
     el.slider.step = String(range[2]);
@@ -594,7 +772,9 @@
     if (tool === next) return;
     tool = next;
     eraserPos = null;
-    el.base.style.cursor = tool === 'eraser' ? 'none' : 'crosshair';
+    vertexHover = null;
+    vertexHoverKey = '';
+    el.base.style.cursor = tool === 'eraser' ? 'none' : tool === 'move' ? 'move' : 'crosshair';
     syncSlider();
     renderLive();
     updateUI();
@@ -608,6 +788,7 @@
 
   function changeSize(delta) {
     var range = SIZE_RANGE[tool];
+    if (!range) return;
     sizes[tool] = clamp(sizes[tool] + delta * range[2] * 2, range[0], range[1]);
     syncSlider();
   }
@@ -617,9 +798,17 @@
   var MAX_ZOOM = 6;
   var MIN_ZOOM = 0.35;
 
+  /* Width needed for the sheet to fill the window: the paper never gets
+     narrower than the screen, so zooming out stops at "full width". */
+  function fitZoom() {
+    var w = el.stage.clientWidth || window.innerWidth || M.PAGE_W;
+    return w / M.PAGE_W;
+  }
+
   function setZoom(next) {
-    zoom = clamp(next, MIN_ZOOM, MAX_ZOOM);
-    fitMode = false;
+    var low = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, fitZoom() - 0.001));
+    zoom = clamp(next, low, MAX_ZOOM);
+    fitMode = Math.abs(zoom - fitZoom()) <= 0.002;
     layout();
     renderBase();
     renderLive();
@@ -642,7 +831,7 @@
   function fitStage() {
     var availW = el.stage.clientWidth;
     if (availW <= 0) return;
-    zoom = clamp(availW / M.PAGE_W, MIN_ZOOM, MAX_ZOOM);
+    zoom = clamp(fitZoom(), MIN_ZOOM, MAX_ZOOM);
     layout();
     renderBase();
     renderLive();
@@ -650,11 +839,21 @@
     fitMode = true;
   }
 
+  /* Safety net for tabs that finish loading while hidden: refit once the
+     window is really on screen, so the sheet never stays at 100% in a corner. */
+  function ensureFit() {
+    if (!fitMode) return;
+    if (el.stage.clientWidth <= 0) return;
+    if (Math.abs(zoom - fitZoom()) > 0.01) fitStage();
+  }
+
   function gotoPage(index) {
     var next = clamp(index, 0, doc.pages.length - 1);
     if (next === doc.active) return;
     doc.active = next;
     eraserPos = null;
+    vertexHover = null;
+    vertexHoverKey = '';
     el.stage.scrollTop = 0;
     renderAll();
     markDirty();
@@ -803,8 +1002,10 @@
 
   /* ----------------------------------------------------------------- wiring */
 
-  el.base.addEventListener('pointerdown', onPointerDown);
-  el.base.addEventListener('pointermove', onPointerMove);
+  /* A tab that finished loading while hidden can miss the first fit; make
+     sure the very first stroke happens on a page that already fills the width. */
+  el.base.addEventListener('pointerdown', ensureFit);
+  el.base.addEventListener('pointerdown', onPointerDown);  el.base.addEventListener('pointermove', onPointerMove);
   el.base.addEventListener('pointerup', onPointerUp);
   el.base.addEventListener('pointercancel', onPointerCancel);
   el.base.addEventListener('pointerleave', function () {
@@ -901,6 +1102,49 @@
   el.zoomIn.addEventListener('click', function () { setZoom(zoom + 0.1); });
   el.zoomOut.addEventListener('click', function () { setZoom(zoom - 0.1); });
   el.zoomFit.addEventListener('click', fitStage);
+
+  /* Full screen: drop the browser chrome so the sheet uses the whole display. */
+  var toastTimer = null;
+
+  function toast(msg) {
+    var box = $('#toast');
+    if (!box) return;
+    box.textContent = msg;
+    box.hidden = false;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { box.hidden = true; }, 2600);
+  }
+
+  function toggleFullscreen() {
+    var root = document.documentElement;
+    if (document.fullscreenElement || document.webkitFullscreenElement) {
+      if (document.exitFullscreen) document.exitFullscreen();
+      else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+      return;
+    }
+    var blocked = function () {
+      toast('Trình duyệt chặn toàn màn hình — bấm F11 để phóng to');
+    };
+    if (root.requestFullscreen) {
+      root.requestFullscreen().catch(blocked);
+    } else if (root.webkitRequestFullscreen) {
+      try { root.webkitRequestFullscreen(); } catch (err) { blocked(); }
+    } else {
+      blocked();
+    }
+  }
+
+  function syncFullscreenButton() {
+    if (!el.btnFull) return;
+    var on = !!(document.fullscreenElement || document.webkitFullscreenElement);
+    el.btnFull.classList.toggle('is-active', on);
+    el.btnFull.setAttribute('aria-pressed', on ? 'true' : 'false');
+    el.btnFull.title = on ? 'Thoát toàn màn hình (F)' : 'Toàn màn hình (F)';
+  }
+
+  if (el.btnFull) el.btnFull.addEventListener('click', toggleFullscreen);
+  document.addEventListener('fullscreenchange', syncFullscreenButton);
+  document.addEventListener('webkitfullscreenchange', syncFullscreenButton);
 
   el.title.addEventListener('input', function () {
     doc.title = el.title.value.slice(0, 120);
@@ -1040,8 +1284,10 @@
     switch (e.key) {
       case 'p': case 'P': setTool('pen'); break;
       case 's': case 'S': setTool('line'); break;
+      case 'm': case 'M': setTool('move'); break;
       case 'h': case 'H': setTool('highlighter'); break;
       case 'e': case 'E': setTool('eraser'); break;
+      case 'f': case 'F': toggleFullscreen(); break;
       case 'l': case 'L': {
         lineStyle = LINE_ORDER[(LINE_ORDER.indexOf(lineStyle) + 1) % LINE_ORDER.length];
         updateUI();
@@ -1069,8 +1315,13 @@
       renderBase();
       renderLive();
     }
-    if (fitMode) fitStage();
+    if (fitMode || zoom < fitZoom()) fitStage();
   });
+
+  document.addEventListener('visibilitychange', function () {
+    if (!document.hidden) setTimeout(ensureFit, 0);
+  });
+  window.addEventListener('focus', ensureFit);
 
   /* The Review pane can open with a zero-sized stage, so refit as soon as it gains size. */
   if (window.ResizeObserver) {
@@ -1082,7 +1333,9 @@
       lastStage.w = w;
       lastStage.h = h;
       fitBarTitle();
-      if (fitMode && w > 0 && h > 0) fitStage();
+      if (fitMode || (w > 0 && h > 0 && zoom < fitZoom())) {
+        if (w > 0 && h > 0) fitStage();
+      }
     }).observe(el.stage);
   }
 

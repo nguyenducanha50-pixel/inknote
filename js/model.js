@@ -5,6 +5,7 @@
   var PAGE_W = 794;   // A4 @ 96dpi -> logical page units
   var PAGE_H = 1123;
   var BG_STYLES = ['blank', 'lined', 'grid', 'dotted'];
+  var LINE_STYLES = ['solid', 'dashed', 'dotted', 'dashdot'];
   var MAX_TITLE = 120;
 
   function uid() {
@@ -54,6 +55,7 @@
       color: raw.color.slice(0, 32),
       size: Math.min(200, Math.max(0.5, num(raw.size, 2))),
       pressureMode: raw.pressureMode === 'real' ? 'real' : 'none',
+      style: LINE_STYLES.indexOf(raw.style) >= 0 ? raw.style : 'solid',
       points: points
     };
   }

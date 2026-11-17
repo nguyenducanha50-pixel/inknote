@@ -40,6 +40,7 @@ Trình duyệt nên dùng: Chrome / Edge / Cobalt / Brave (bản mới). Bút c�
 | Xuất | PNG (trang hiện tại, 2x), PDF (toàn bộ trang, ảnh JPEG nhúng, không thư viện ngoài) |
 | Tệp | Xuất / nhập `.json` để sao lưu hoặc chuyển máy |
 | Xem | Zoom 35–300%, nút "Vừa" tự canh trang theo khung |
+| Cỡ giao diện | Nhỏ / Vừa / Lớn trong ⚙ — đổi độ lớn thanh công cụ, nhớ cho lần sau |
 
 ## Giao diện
 
@@ -48,6 +49,11 @@ ngoặc, cụm chấm màu bên phải (chấm đang chọn phóng to có dấu 
 ba công cụ bút / dạ quang / tẩy và nút cài đặt. Đáy màn hình là dải tím đánh dấu
 vùng tự cuộn, hai mũi tên tam giác hai bên để chuyển trang. Giấy kẻ dòng chạy
 tràn viền, không khung, không lề đỏ.
+
+Thanh công cụ cao 42 / 48 / 57 px (Nhỏ / Vừa / Lớn) để vẫn dễ bấm khi thu nhỏ
+trang; mọi kích thước trong thanh đều theo biến CSS `--ui` nên chỉnh một chỗ là
+toàn bộ icon, chấm màu, cỡ nét, tên ghi chú to nhỏ theo. Khi cửa sổ hẹp, tên ghi
+chú tự ẩn để không đè lên cụm công cụ.
 
 ## Phím tắt
 

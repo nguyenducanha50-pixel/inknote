@@ -265,6 +265,36 @@ body {
   background: #fff;
 }
 
+/* ------------------------------------------------------------- line styles */
+
+.line-btn { color: #333840; }
+
+#linePop { width: 218px; }
+
+.line-opt {
+  display: grid;
+  grid-template-columns: 52px 1fr auto;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 7px 8px;
+  color: #3a3f47;
+  background: transparent;
+  border: 0;
+  border-radius: 7px;
+  cursor: pointer;
+  text-align: left;
+}
+
+.line-opt svg { width: 46px; height: 14px; color: #2b3038; }
+.line-opt span { font-size: 12.5px; }
+.line-opt em { font-size: 10px; font-style: normal; color: var(--faint); }
+.line-opt:hover { background: #eef3fd; }
+.line-opt.is-active { background: var(--accent-soft); }
+.line-opt.is-active svg,
+.line-opt.is-active span,
+.line-opt.is-active em { color: var(--accent); }
+
 /* ----------------------------------------------------------------- popover */
 
 .popover {

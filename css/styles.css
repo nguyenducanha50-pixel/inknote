@@ -530,6 +530,13 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
+.hint {
+  padding: 6px 8px 2px;
+  font-size: 10.5px;
+  line-height: 1.35;
+  color: var(--faint);
+}
+
 .zoom-row .text-btn { margin-left: auto; }
 
 .export-row {
@@ -548,6 +555,7 @@ body {
   padding-bottom: 70px;
   background: #fff;
   overscroll-behavior: contain;
+  touch-action: pan-y;
 }
 
 .stage::-webkit-scrollbar { width: 11px; height: 11px; }

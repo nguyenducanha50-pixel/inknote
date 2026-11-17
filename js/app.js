@@ -16,7 +16,6 @@
     wrap: $('#pageWrap'),
     stage: $('#stage'),
     title: $('#docTitle'),
-    pageLabel: $('#pageLabel'),
     zoomLabel: $('#zoomLabel'),
     undo: $('#btnUndo'),
     redo: $('#btnRedo'),
@@ -40,10 +39,19 @@
     zoomOut: $('#zoomOut'),
     zoomFit: $('#zoomFit'),
     color: $('#colorInput'),
-    toolName: $('#toolName'),
-    btnSize: $('#btnSize'),
-    sizeDot: $('#sizeDot'),
-    sizePop: $('#sizePop'),
+    btnPages: $('#btnPages'),
+    btnGrid: $('#btnGrid'),
+    pageChip: $('#pageChip'),
+    titleCount: $('#titleCount'),
+    pagesPop: $('#pagesPop'),
+    pagesGrid: $('#pagesGrid'),
+    pAdd: $('#pAdd'),
+    pDup: $('#pDup'),
+    pDel: $('#pDel'),
+    btnSettings: $('#btnSettings'),
+    setPop: $('#setPop'),
+    band: $('#marginBand'),
+    pips: Array.prototype.slice.call(document.querySelectorAll('[data-pip]')),
     tools: Array.prototype.slice.call(document.querySelectorAll('[data-tool]')),
     swatches: Array.prototype.slice.call(document.querySelectorAll('[data-color]')),
     bgs: Array.prototype.slice.call(document.querySelectorAll('[data-bg]'))
@@ -57,12 +65,17 @@
     highlighter: [8, 48, 1],
     eraser: [6, 64, 1]
   };
-  var TOOL_LABEL = { pen: 'Bút', highlighter: 'Dạ quang', eraser: 'Tẩy' };
+  /* Three quick sizes per tool, shown as the small dots in the top bar. */
+  var QUICK = {
+    pen: [1.6, 3.2, 6.4],
+    highlighter: [12, 20, 32],
+    eraser: [10, 18, 30]
+  };
 
   var doc = bootDoc();
   var tool = 'pen';
-  var color = '#1f2430';
-  var sizes = { pen: 3, highlighter: 18, eraser: 16 };
+  var color = '#111111';
+  var sizes = { pen: 3.2, highlighter: 20, eraser: 18 };
   var zoom = 1;
   var fitMode = true;
   var dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -248,6 +261,8 @@
 
   function onPointerDown(e) {
     if (e.pointerType === 'mouse' && e.button !== 0) return;
+    /* Palm rejection: fingers scroll the paper, only pen/mouse draws. */
+    if (e.pointerType === 'touch') return;
     e.preventDefault();
     try { el.base.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
     var pt = pagePoint(e);
@@ -275,15 +290,45 @@
     renderLive();
   }
 
-  /* Keep the paper moving while the stylus approaches an edge. */
+  var scrollTimer = null;
+  var scrollDir = 0;
+  var scrollSpeed = 0;
+
+  function scrollTick() {
+    if (!scrollDir) return;
+    var before = el.stage.scrollTop;
+    el.stage.scrollTop = before + scrollDir * scrollSpeed;
+    if (el.stage.scrollTop === before) stopAutoScroll();
+  }
+
+  function stopAutoScroll() {
+    if (scrollTimer) clearInterval(scrollTimer);
+    scrollTimer = null;
+    scrollDir = 0;
+    el.band.classList.remove('is-active');
+  }
+
+  /* Scrble-style margin autoscroll: once the nib enters the purple band the
+     page keeps moving, even when the stylus itself stops moving. */
   function autoScroll(e) {
-    var rect = el.stage.getBoundingClientRect();
-    var edge = 78;
-    if (e.clientY > rect.bottom - edge) {
-      el.stage.scrollTop += Math.min(26, (e.clientY - (rect.bottom - edge)) * 0.45);
-    } else if (e.clientY < rect.top + edge) {
-      el.stage.scrollTop -= Math.min(26, (rect.top + edge - e.clientY) * 0.45);
+    var stageRect = el.stage.getBoundingClientRect();
+    var bandTop = el.band.getBoundingClientRect().top;
+    var dir = 0;
+    var speed = 0;
+    if (e.clientY >= bandTop) {
+      if (el.stage.scrollTop + el.stage.clientHeight < el.stage.scrollHeight - 1) {
+        dir = 1;
+        speed = clamp(4 + (e.clientY - bandTop) * 0.5, 4, 18);
+      }
+    } else if (e.clientY < stageRect.top + 44 && el.stage.scrollTop > 0) {
+      dir = -1;
+      speed = 8;
     }
+    if (!dir) { stopAutoScroll(); return; }
+    scrollDir = dir;
+    scrollSpeed = speed;
+    el.band.classList.toggle('is-active', dir > 0);
+    if (!scrollTimer) scrollTimer = setInterval(scrollTick, 16);
   }
 
   function onPointerMove(e) {
@@ -307,6 +352,7 @@
   }
 
   function onPointerUp() {
+    stopAutoScroll();
     if (current) {
       var finished = current;
       current = null;
@@ -336,6 +382,7 @@
   }
 
   function onPointerCancel() {
+    stopAutoScroll();
     if (current) {
       current = null;
       clearLive();
@@ -354,10 +401,12 @@
   /* -------------------------------------------------------------------- ui */
 
   function updateUI() {
-    el.pageLabel.textContent = (doc.active + 1) + ' / ' + doc.pages.length;
+    el.pageChip.textContent = String(doc.active + 1);
+    el.titleCount.textContent = '(' + doc.pages.length + ')';
     el.prev.disabled = doc.active <= 0;
     el.next.disabled = doc.active >= doc.pages.length - 1;
     el.del.disabled = doc.pages.length <= 1;
+    el.pDel.disabled = doc.pages.length <= 1;
     el.undo.disabled = undoStack.length === 0;
     el.redo.disabled = redoStack.length === 0;
     if (document.activeElement !== el.title) el.title.value = doc.title;
@@ -373,7 +422,24 @@
     el.bgs.forEach(function (btn) {
       btn.classList.toggle('is-active', btn.dataset.bg === activePage().bg);
     });
-    el.toolName.textContent = TOOL_LABEL[tool];
+    syncPips();
+  }
+
+  /* The active quick-size dot: nearest of the three preset widths for this tool. */
+  function syncPips() {
+    var list = QUICK[tool] || QUICK.pen;
+    var best = 0;
+    var bestDiff = Infinity;
+    for (var i = 0; i < list.length; i++) {
+      var diff = Math.abs(list[i] - sizes[tool]);
+      if (diff < bestDiff) { bestDiff = diff; best = i; }
+    }
+    el.pips.forEach(function (pip, i) {
+      pip.classList.toggle('is-active', i === best);
+      pip.style.setProperty('--pip', color);
+      var span = pip.querySelector('span');
+      if (span) span.style.background = color;
+    });
   }
 
   function updateZoomLabel() {
@@ -388,11 +454,7 @@
     el.slider.value = String(sizes[tool]);
     el.sizeLabel.textContent = String(Math.round(sizes[tool]));
     el.slider.disabled = false;
-    var dot = clamp(sizes[tool], 4, 18);
-    if (el.sizeDot) {
-      el.sizeDot.style.width = dot + 'px';
-      el.sizeDot.style.height = dot + 'px';
-    }
+    syncPips();
   }
 
   function setTool(next) {
@@ -408,7 +470,6 @@
   function setColor(next) {
     color = next;
     el.color.value = next;
-    if (el.sizeDot) el.sizeDot.style.background = next;
     updateUI();
   }
 
@@ -444,6 +505,7 @@
     if (next === doc.active) return;
     doc.active = next;
     eraserPos = null;
+    el.stage.scrollTop = 0;
     renderAll();
     markDirty();
   }
@@ -473,6 +535,43 @@
     doc.active = clamp(doc.active, 0, doc.pages.length - 1);
     renderAll();
     markDirty();
+  }
+
+  /* Page overview: a live-rendered thumbnail for every page, like the page
+     strip in Scrble Ink. */
+  function renderPageGrid() {
+    el.pagesGrid.innerHTML = '';
+    doc.pages.forEach(function (page, index) {
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'page-thumb' + (index === doc.active ? ' is-active' : '');
+      btn.title = 'Trang ' + (index + 1);
+
+      var canvas = document.createElement('canvas');
+      var w = 82;
+      var h = Math.round(w * M.PAGE_H / M.PAGE_W);
+      canvas.width = w * 2;
+      canvas.height = h * 2;
+      canvas.style.width = w + 'px';
+      canvas.style.height = h + 'px';
+
+      var ctx = canvas.getContext('2d');
+      var s = canvas.width / M.PAGE_W;
+      ctx.setTransform(s, 0, 0, s, 0, 0);
+      R.drawBackground(ctx, page.bg, M.PAGE_W, M.PAGE_H, 0.9 / s);
+      for (var i = 0; i < page.strokes.length; i++) R.renderStroke(ctx, page.strokes[i]);
+
+      var label = document.createElement('span');
+      label.textContent = String(index + 1);
+
+      btn.appendChild(canvas);
+      btn.appendChild(label);
+      btn.addEventListener('click', function () {
+        gotoPage(index);
+        renderPageGrid();
+      });
+      el.pagesGrid.appendChild(btn);
+    });
   }
 
   function clearPage() {
@@ -574,11 +673,14 @@
   el.slider.addEventListener('input', function () {
     sizes[tool] = parseFloat(el.slider.value) || SIZE_RANGE[tool][0];
     el.sizeLabel.textContent = String(Math.round(sizes[tool]));
-    if (el.sizeDot) {
-      var dot = clamp(sizes[tool], 4, 18);
-      el.sizeDot.style.width = dot + 'px';
-      el.sizeDot.style.height = dot + 'px';
-    }
+    syncPips();
+  });
+  el.pips.forEach(function (pip, index) {
+    pip.addEventListener('click', function () {
+      var list = QUICK[tool] || QUICK.pen;
+      sizes[tool] = list[index];
+      syncSlider();
+    });
   });
 
   el.bgs.forEach(function (btn) {
@@ -607,16 +709,43 @@
   });
 
   registerPop(el.menuPop, el.menu);
-  registerPop(el.sizePop, el.btnSize);
+  registerPop(el.pagesPop, el.btnPages);
+  registerPop(el.pagesPop, el.btnGrid);
+  registerPop(el.setPop, el.btnSettings);
 
   el.menu.addEventListener('click', function (e) {
     e.stopPropagation();
     togglePop(el.menuPop, el.menu);
   });
-  el.btnSize.addEventListener('click', function (e) {
+
+  function togglePages() {
+    var willOpen = el.pagesPop.hidden;
+    closePopovers(el.pagesPop);
+    if (willOpen) renderPageGrid();
+    el.pagesPop.hidden = !willOpen;
+    el.btnPages.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
+  }
+
+  el.btnPages.addEventListener('click', function (e) {
     e.stopPropagation();
-    togglePop(el.sizePop, el.btnSize);
+    togglePages();
   });
+  el.btnGrid.addEventListener('click', function (e) {
+    e.stopPropagation();
+    togglePages();
+  });
+  el.btnSettings.addEventListener('click', function (e) {
+    e.stopPropagation();
+    togglePop(el.setPop, el.btnSettings);
+  });
+
+  function pageAction(action) {
+    action();
+    if (!el.pagesPop.hidden) renderPageGrid();
+  }
+  el.pAdd.addEventListener('click', function () { pageAction(addPage); });
+  el.pDup.addEventListener('click', function () { pageAction(duplicatePage); });
+  el.pDel.addEventListener('click', function () { pageAction(deletePage); });
   document.addEventListener('click', function (e) {
     var inside = POPOVERS.some(function (entry) {
       return entry.pop.contains(e.target) || (entry.trigger && entry.trigger.contains(e.target));

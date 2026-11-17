@@ -42,7 +42,7 @@ Trình duyệt nên dùng: Chrome / Edge / Cobalt / Brave (bản mới). Bút c�
 | Xuất | PNG (trang hiện tại, 2x), PDF (toàn bộ trang, ảnh JPEG nhúng, không thư viện ngoài) |
 | Tệp | Xuất / nhập `.json` để sao lưu hoặc chuyển máy |
 | Xem | Zoom giấy 35–800%, nút "Vừa" canh giấy theo chiều rộng khung (giấy luôn phủ kín bề ngang cửa sổ) |
-| Khổ giấy | **A4 dọc**, **A4 ngang** (viết được dài hơn mỗi dòng), hoặc **Vừa màn hình** — cả khung hình thành một trang giấy, không phải cuộn. Chọn trong ⚙, lưu cho lần sau |
+| Khổ giấy | **A4 dọc / A4 ngang / A3 dọc / A3 ngang / Trang dài / Vừa màn hình** trong ⚙. *Trang dài* tự nối thêm khi viết tới đáy nên chứng minh dài không cần sang trang; *Vừa màn hình* thì cả khung hình là một trang. Lưu cho lần sau |
 | Phóng giấy | `Ctrl` + lăn chuột hoặc chụm 2 ngón trên giấy để phóng to / thu nhỏ đúng chỗ đang trỏ — **thanh công cụ giữ nguyên kích thước** |
 | Cỡ giao diện | Nhỏ / Vừa / Lớn trong ⚙ — đổi độ lớn thanh công cụ, nhớ cho lần sau |
 
@@ -103,8 +103,10 @@ xử lý lại (ví dụ đổi màu, đổi độ dày) mà không mất chất
 ## Ghi chú kỹ thuật
 
 - Kích thước trang logic nằm trong tài liệu: A4 dọc 794 × 1123, A4 ngang
-  1123 × 794, hoặc "vừa màn hình" = đúng khung nhìn (bám theo khi đổi cỡ cửa
-  sổ). Canvas render ở `dpr × zoom` nên nét vẫn sắc khi phóng to.
+  1123 × 794, A3 dọc 1191 × 1684, A3 ngang 1684 × 1191, "trang dài" 794 × 2246
+  và tự cộng thêm 561 mỗi lần viết tới đáy, hoặc "vừa màn hình" = đúng khung
+  nhìn (bám theo khi đổi cỡ cửa sổ). Canvas render ở `dpr × zoom` nên nét vẫn
+  sắc khi phóng to.
 - Nét bút vẽ bằng chuỗi tứ giác nối tiếp (mỗi đoạn một độ rộng), gom vào một
   path duy nhất rồi `fill()` một lần → mượt và nhanh.
 - PDF được sinh thủ công: mỗi trang là một XObject ảnh JPEG (`/DCTDecode`) trên

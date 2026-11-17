@@ -164,10 +164,12 @@
     var leftW = el.tbLeft.offsetWidth;
     var rightW = el.tbRight.offsetWidth;
     var room = vw - 2 * Math.max(leftW, rightW) - 20;
-    var tight = room < 150;
+    var tight = room < 110;
     el.tbCenter.classList.toggle('is-tight', tight);
     el.tbCenter.style.maxWidth = tight ? '0px' : room + 'px';
-    var countW = el.titleCount ? el.titleCount.offsetWidth + 6 : 24;
+    /* Step 1: drop the page count, step 2: drop the title itself. */
+    if (el.titleCount) el.titleCount.style.display = room < 190 ? 'none' : '';
+    var countW = el.titleCount ? el.titleCount.offsetWidth + 6 : 0;
     el.title.style.maxWidth = tight ? '0px' : Math.max(70, room - countW) + 'px';
   }
 

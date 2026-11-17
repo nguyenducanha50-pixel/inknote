@@ -3,6 +3,7 @@
   'use strict';
 
   var TAU = Math.PI * 2;
+  var pressureSens = 0.65;
 
   function drawBackground(ctx, bg, w, h, thin) {
     var unit = thin || 1;
@@ -51,7 +52,12 @@
 
   function widthFor(stroke, pressure) {
     if (stroke.pressureMode !== 'real') return stroke.size;
-    return stroke.size * (0.35 + 0.65 * pressure);
+    var p = Math.min(1, Math.max(0, pressure));
+    return stroke.size * Math.max(0.25, 1 - pressureSens * (1 - p));
+  }
+
+  function setPressureSensitivity(value) {
+    pressureSens = Math.min(1, Math.max(0, value));
   }
 
   function roundCap(ctx, x, y, r) {
@@ -228,6 +234,7 @@
     renderStroke: renderStroke,
     strokeHitsPoint: strokeHitsPoint,
     drawEraserRing: drawEraserRing,
-    widthFor: widthFor
+    widthFor: widthFor,
+    setPressureSensitivity: setPressureSensitivity
   };
 })(window);

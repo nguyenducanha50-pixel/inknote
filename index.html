@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>InkNote — ghi chú bằng bút</title>
-<link rel="stylesheet" href="css/styles.css?v=7" />
+<link rel="stylesheet" href="css/styles.css?v=8" />
 </head>
 <body>
 <div class="app">
@@ -154,6 +154,19 @@
 
       <span class="pop-sep"></span>
 
+      <div class="pop-title">Chống rung khi viết</div>
+      <div class="seg" id="smoothSeg">
+        <button data-smooth="0">Tắt</button>
+        <button data-smooth="1" class="is-active">Nhẹ</button>
+        <button data-smooth="3">Mạnh</button>
+      </div>
+
+      <div class="pop-title">Độ nhạy áp lực</div>
+      <input type="range" id="sensSlider" min="0" max="100" step="5" value="65" aria-label="Độ nhạy áp lực" />
+      <div class="size-value"><span id="sensLabel">65</span>%</div>
+
+      <span class="pop-sep"></span>
+
       <div class="pop-title">Thu phóng</div>
       <div class="zoom-row">
         <button id="zoomOut" class="ib sm" title="Thu nhỏ (−)" aria-label="Thu nhỏ">
@@ -194,10 +207,10 @@
 
 <noscript>Ứng dụng cần JavaScript để vẽ. Hãy bật JavaScript rồi tải lại trang.</noscript>
 
-<script src="js/model.js?v=7"></script>
-<script src="js/storage.js?v=7"></script>
-<script src="js/render.js?v=7"></script>
-<script src="js/export.js?v=7"></script>
-<script src="js/app.js?v=7"></script>
+<script src="js/model.js?v=8"></script>
+<script src="js/storage.js?v=8"></script>
+<script src="js/render.js?v=8"></script>
+<script src="js/export.js?v=8"></script>
+<script src="js/app.js?v=8"></script>
 </body>
 </html>

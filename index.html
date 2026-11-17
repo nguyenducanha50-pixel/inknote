@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>InkNote — ghi chú bằng bút</title>
-<link rel="stylesheet" href="css/styles.css?v=19" />
+<link rel="stylesheet" href="css/styles.css?v=20" />
 </head>
 <body>
 <div class="app">
@@ -185,12 +185,15 @@
       <span class="pop-sep"></span>
 
       <div class="pop-title">Khổ giấy</div>
-      <div class="seg" id="paperSeg">
-        <button data-paper="a4" class="is-active">A4 dọc</button>
-        <button data-paper="a4l">A4 ngang</button>
-        <button data-paper="screen">Vừa màn hình</button>
+      <div class="paper-row" id="paperRow">
+        <button class="paper-opt is-active" data-paper="a4">A4 dọc<em>794 × 1123</em></button>
+        <button class="paper-opt" data-paper="a4l">A4 ngang<em>1123 × 794</em></button>
+        <button class="paper-opt" data-paper="a3">A3 dọc<em>1191 × 1684</em></button>
+        <button class="paper-opt" data-paper="a3l">A3 ngang<em>1684 × 1191</em></button>
+        <button class="paper-opt" data-paper="long">Trang dài<em>tự nối dài mãi</em></button>
+        <button class="paper-opt" data-paper="screen">Vừa màn hình<em>khít cửa sổ</em></button>
       </div>
-      <div class="hint">“Vừa màn hình” biến cả khung hình thành một trang giấy — không phải cuộn, viết được nhiều nhất</div>
+      <div class="hint">Trang dài tự nối thêm khi viết tới đáy — chứng minh dài không cần sang trang. “Vừa màn hình” thì cả khung hình là một trang.</div>
 
       <span class="pop-sep"></span>
 
@@ -236,10 +239,10 @@
 
 <noscript>Ứng dụng cần JavaScript để vẽ. Hãy bật JavaScript rồi tải lại trang.</noscript>
 
-<script src="js/model.js?v=19"></script>
-<script src="js/storage.js?v=19"></script>
-<script src="js/render.js?v=19"></script>
-<script src="js/export.js?v=19"></script>
-<script src="js/app.js?v=19"></script>
+<script src="js/model.js?v=20"></script>
+<script src="js/storage.js?v=20"></script>
+<script src="js/render.js?v=20"></script>
+<script src="js/export.js?v=20"></script>
+<script src="js/app.js?v=20"></script>
 </body>
 </html>

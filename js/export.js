@@ -5,9 +5,6 @@
   var M = global.InkModel;
   var R = global.InkRender;
 
-  var A4_W = 595.28;
-  var A4_H = 841.89;
-
   function download(blob, filename) {
     var url = URL.createObjectURL(blob);
     var a = document.createElement('a');
@@ -20,13 +17,19 @@
     setTimeout(function () { URL.revokeObjectURL(url); }, 4000);
   }
 
-  function renderPageToCanvas(page, scale) {
+  function renderPageToCanvas(page, scale, pageW, pageH) {
+    var w = pageW || M.PAGE_W;
+    var h = pageH || M.PAGE_H;
     var canvas = document.createElement('canvas');
-    canvas.width = Math.round(M.PAGE_W * scale);
-    canvas.height = Math.round(M.PAGE_H * scale);
+    /* Keep very large sheets inside the canvas memory budget. */
+    var fitScale = Math.min(scale, Math.sqrt(18e6 / (w * h)));
+    canvas.width = Math.max(1, Math.round(w * fitScale));
+    canvas.height = Math.max(1, Math.round(h * fitScale));
+    var sx = canvas.width / w;
+    var sy = canvas.height / h;
     var ctx = canvas.getContext('2d');
-    ctx.setTransform(scale, 0, 0, scale, 0, 0);
-    R.drawBackground(ctx, page.bg, M.PAGE_W, M.PAGE_H, 0.5);
+    ctx.setTransform(sx, 0, 0, sy, 0, 0);
+    R.drawBackground(ctx, page.bg, w, h, 0.5);
     for (var i = 0; i < page.strokes.length; i++) {
       R.renderStroke(ctx, page.strokes[i]);
     }
@@ -75,19 +78,17 @@
       var pageNum = 3 + i * 3;
       var contentNum = pageNum + 1;
       var imageNum = pageNum + 2;
-      var fit = Math.min(A4_W / img.width, A4_H / img.height);
-      var w = img.width * fit;
-      var h = img.height * fit;
-      var x = (A4_W - w) / 2;
-      var y = (A4_H - h) / 2;
+      /* Logical page units are 96dpi pixels; PDF uses 72dpi points. */
+      var boxW = (img.pageW || M.PAGE_W) * 0.75;
+      var boxH = (img.pageH || M.PAGE_H) * 0.75;
 
       objects.push({
-        body: '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ' + fmt(A4_W) + ' ' + fmt(A4_H) + ']' +
+        body: '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ' + fmt(boxW) + ' ' + fmt(boxH) + ']' +
           ' /Resources << /XObject << /Im0 ' + imageNum + ' 0 R >> >>' +
           ' /Contents ' + contentNum + ' 0 R >>'
       });
 
-      var content = 'q\n' + fmt(w) + ' 0 0 ' + fmt(h) + ' ' + fmt(x) + ' ' + fmt(y) + ' cm\n/Im0 Do\nQ\n';
+      var content = 'q\n' + fmt(boxW) + ' 0 0 ' + fmt(boxH) + ' 0 0 cm\n/Im0 Do\nQ\n';
       var contentBytes = enc.encode(content);
       objects.push({
         body: '<< /Length ' + contentBytes.length + ' >>',
@@ -129,8 +130,8 @@
     return new Blob(parts, { type: 'application/pdf' });
   }
 
-  function exportPNG(page, filename) {
-    var canvas = renderPageToCanvas(page, 2);
+  function exportPNG(page, filename, pageW, pageH) {
+    var canvas = renderPageToCanvas(page, 2, pageW, pageH);
     return new Promise(function (resolve, reject) {
       canvas.toBlob(function (blob) {
         if (!blob) {
@@ -153,11 +154,13 @@
         return Promise.resolve();
       }
       if (onProgress) onProgress(index + 1, doc.pages.length);
-      var canvas = renderPageToCanvas(doc.pages[index], 1.6);
+      var canvas = renderPageToCanvas(doc.pages[index], 1.6, doc.pageW || M.PAGE_W, doc.pageH || M.PAGE_H);
       var dataUrl = canvas.toDataURL('image/jpeg', 0.92);
       images.push({
         width: canvas.width,
         height: canvas.height,
+        pageW: doc.pageW || M.PAGE_W,
+        pageH: doc.pageH || M.PAGE_H,
         bytes: base64ToBytes(dataUrl.slice(dataUrl.indexOf(',') + 1))
       });
       index++;

@@ -50,6 +50,10 @@
     pDel: $('#pDel'),
     btnSettings: $('#btnSettings'),
     setPop: $('#setPop'),
+    btnLine: $('#btnLine'),
+    linePop: $('#linePop'),
+    lineIcon: $('#lineIconPath'),
+    lineOpts: Array.prototype.slice.call(document.querySelectorAll('[data-line]')),
     band: $('#marginBand'),
     pips: Array.prototype.slice.call(document.querySelectorAll('[data-pip]')),
     tools: Array.prototype.slice.call(document.querySelectorAll('[data-tool]')),
@@ -71,11 +75,15 @@
     highlighter: [12, 20, 32],
     eraser: [10, 18, 30]
   };
+  /* Dash pattern previews for the toolbar icon. */
+  var LINE_DASH = { solid: 'none', dashed: '4 3', dotted: '0.6 2.8', dashdot: '4.4 2.2 0.6 2.2' };
+  var LINE_ORDER = ['solid', 'dashed', 'dotted', 'dashdot'];
 
   var doc = bootDoc();
   var tool = 'pen';
   var color = '#111111';
   var sizes = { pen: 3.2, highlighter: 20, eraser: 18 };
+  var lineStyle = 'solid';
   var zoom = 1;
   var fitMode = true;
   var dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -284,6 +292,7 @@
       color: color,
       size: sizes[tool],
       pressureMode: e.pointerType === 'pen' ? 'real' : 'none',
+      style: tool === 'pen' ? lineStyle : 'solid',
       points: []
     };
     addPoint(pt, pressureOf(e));
@@ -422,6 +431,10 @@
     el.bgs.forEach(function (btn) {
       btn.classList.toggle('is-active', btn.dataset.bg === activePage().bg);
     });
+    el.lineOpts.forEach(function (btn) {
+      btn.classList.toggle('is-active', btn.dataset.line === lineStyle);
+    });
+    if (el.lineIcon) el.lineIcon.setAttribute('stroke-dasharray', LINE_DASH[lineStyle] || 'none');
     syncPips();
   }
 
@@ -712,10 +725,22 @@
   registerPop(el.pagesPop, el.btnPages);
   registerPop(el.pagesPop, el.btnGrid);
   registerPop(el.setPop, el.btnSettings);
+  registerPop(el.linePop, el.btnLine);
 
   el.menu.addEventListener('click', function (e) {
     e.stopPropagation();
     togglePop(el.menuPop, el.menu);
+  });
+  el.btnLine.addEventListener('click', function (e) {
+    e.stopPropagation();
+    togglePop(el.linePop, el.btnLine);
+  });
+  el.lineOpts.forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      lineStyle = btn.dataset.line;
+      updateUI();
+      closePopovers();
+    });
   });
 
   function togglePages() {
@@ -804,6 +829,11 @@
       case 'p': case 'P': setTool('pen'); break;
       case 'h': case 'H': setTool('highlighter'); break;
       case 'e': case 'E': setTool('eraser'); break;
+      case 'l': case 'L': {
+        lineStyle = LINE_ORDER[(LINE_ORDER.indexOf(lineStyle) + 1) % LINE_ORDER.length];
+        updateUI();
+        break;
+      }
       case '[': changeSize(-1); break;
       case ']': changeSize(1); break;
       case '+': case '=': setZoom(zoom + 0.1); break;

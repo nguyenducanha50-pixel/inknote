@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>InkNote — ghi chú bằng bút</title>
-<link rel="stylesheet" href="css/styles.css?v=6" />
+<link rel="stylesheet" href="css/styles.css?v=7" />
 </head>
 <body>
 <div class="app">
@@ -63,8 +63,11 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path id="lineIconPath" d="M3 12h18" /></svg>
       </button>
 
-      <button class="ib tool" data-tool="pen" aria-pressed="true" title="Bút (P)">
+      <button class="ib tool" data-tool="pen" aria-pressed="true" title="Bút thường (P)">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4.6 19.4l4.1-1.1L18.9 8.1a1.9 1.9 0 0 0 0-2.7l-1.3-1.3a1.9 1.9 0 0 0-2.7 0L4.7 14.3z" /><path d="M14 5.4l4.6 4.6" /></svg>
+      </button>
+      <button class="ib tool" data-tool="line" aria-pressed="false" title="Kẻ đường thẳng (S, hoặc giữ Shift khi vẽ)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M5.5 18.5L18.5 5.5" /><circle cx="5.2" cy="18.8" r="1.7" fill="currentColor" stroke="none" /><circle cx="18.8" cy="5.2" r="1.7" fill="currentColor" stroke="none" /></svg>
       </button>
       <button class="ib tool" data-tool="highlighter" aria-pressed="false" title="Dạ quang (H)">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M7 16.8l9.5-9.5a2 2 0 0 1 2.8 0l.4.4a2 2 0 0 1 0 2.8L10.6 19H7z" /><path d="M11.2 12.6l3.2 3.2" /><path d="M5 21h7" /></svg>
@@ -191,10 +194,10 @@
 
 <noscript>Ứng dụng cần JavaScript để vẽ. Hãy bật JavaScript rồi tải lại trang.</noscript>
 
-<script src="js/model.js?v=6"></script>
-<script src="js/storage.js?v=6"></script>
-<script src="js/render.js?v=6"></script>
-<script src="js/export.js?v=6"></script>
-<script src="js/app.js?v=6"></script>
+<script src="js/model.js?v=7"></script>
+<script src="js/storage.js?v=7"></script>
+<script src="js/render.js?v=7"></script>
+<script src="js/export.js?v=7"></script>
+<script src="js/app.js?v=7"></script>
 </body>
 </html>

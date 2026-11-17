@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>InkNote — ghi chú bằng bút</title>
-<link rel="stylesheet" href="css/styles.css?v=17" />
+<link rel="stylesheet" href="css/styles.css?v=19" />
 </head>
 <body>
 <div class="app">
@@ -184,6 +184,16 @@
 
       <span class="pop-sep"></span>
 
+      <div class="pop-title">Khổ giấy</div>
+      <div class="seg" id="paperSeg">
+        <button data-paper="a4" class="is-active">A4 dọc</button>
+        <button data-paper="a4l">A4 ngang</button>
+        <button data-paper="screen">Vừa màn hình</button>
+      </div>
+      <div class="hint">“Vừa màn hình” biến cả khung hình thành một trang giấy — không phải cuộn, viết được nhiều nhất</div>
+
+      <span class="pop-sep"></span>
+
       <div class="pop-title">Thu phóng giấy</div>
       <div class="zoom-row">
         <button id="zoomOut" class="ib sm" title="Thu nhỏ (−)" aria-label="Thu nhỏ">
@@ -226,10 +236,10 @@
 
 <noscript>Ứng dụng cần JavaScript để vẽ. Hãy bật JavaScript rồi tải lại trang.</noscript>
 
-<script src="js/model.js?v=17"></script>
-<script src="js/storage.js?v=17"></script>
-<script src="js/render.js?v=17"></script>
-<script src="js/export.js?v=17"></script>
-<script src="js/app.js?v=17"></script>
+<script src="js/model.js?v=19"></script>
+<script src="js/storage.js?v=19"></script>
+<script src="js/render.js?v=19"></script>
+<script src="js/export.js?v=19"></script>
+<script src="js/app.js?v=19"></script>
 </body>
 </html>

@@ -27,6 +27,8 @@ Trình duyệt nên dùng: Chrome / Edge / Cobalt / Brave (bản mới). Bút c�
 | Bút | Nét đổi độ dày theo áp lực bút, làm mượt điểm, 7 màu nhanh + màu tuỳ chọn |
 | Nét chữ | **Chống rung**: Tắt / Nhẹ / Mạnh (giảm run tay khi viết chữ) và **độ nhạy áp lực** 0–100% (0% = nét đều) |
 | Thước kẻ | Công cụ kẻ đường thẳng: kéo từ đầu đến cuối là ra một đoạn thẳng tuyệt đối; giữ `Shift` khi đang dùng bút thường cũng cho đoạn thẳng |
+| Kéo điểm | Công cụ ↕ (`M`): mỗi đoạn thẳng hiện hai điểm tròn ở hai đầu, nắm điểm để kéo chỉnh hình như GeoGebra — góc chung của nhiều đoạn dính liền nên cả hình đổi theo, kéo xong `Ctrl+Z` trả lại như cũ |
+| Toàn màn hình | Nút ⛶ hoặc phím `F` — ẩn thanh địa chỉ, giấy dùng trọn màn hình |
 | Cỡ nét | 3 nút cỡ nhanh trên thanh trên (mảnh / vừa / đậm) + thanh trượt chỉnh chi tiết |
 | Kiểu nét | Nét liền, nét đứt, nét chấm, nét đứt–chấm — dùng để vẽ hình học (cạnh thấy / cạnh khuất, trục) |
 | Dạ quang | Nét trong suốt để tô sáng, độ dày riêng |
@@ -47,9 +49,13 @@ Trình duyệt nên dùng: Chrome / Edge / Cobalt / Brave (bản mới). Bút c�
 
 Bám theo Scrble Ink: thanh trên rất mỏng, tên ghi chú ở giữa kèm số trang trong
 ngoặc, cụm chấm màu bên phải (chấm đang chọn phóng to có dấu ✓), ba chấm cỡ nét,
-ba công cụ bút / dạ quang / tẩy và nút cài đặt. Đáy màn hình là dải tím đánh dấu
-vùng tự cuộn, hai mũi tên tam giác hai bên để chuyển trang. Giấy kẻ dòng chạy
-tràn viền, không khung, không lề đỏ.
+bốn công cụ bút / kẻ thẳng / kéo điểm / dạ quang / tẩy và nút cài đặt. Đáy màn hình
+là dải tím đánh dấu vùng tự cuộn, hai mũi tên tam giác hai bên để chuyển trang.
+Giấy kẻ dòng chạy tràn viền, không khung, không lề đỏ.
+
+Giấy luôn rộng bằng bề ngang cửa sổ và **không thu nhỏ hơn mức đó**: kéo nhỏ mãi
+cũng dừng ở "vừa chiều rộng", nên không bao giờ có hai dải trắng hai bên. Muốn
+nhiều chỗ hơn thì bật toàn màn hình (`F`).
 
 Thanh công cụ cao 42 / 48 / 57 px (Nhỏ / Vừa / Lớn) để vẫn dễ bấm khi thu nhỏ
 trang; mọi kích thước trong thanh đều theo biến CSS `--ui` nên chỉnh một chỗ là
@@ -66,6 +72,8 @@ thanh được bù lại theo `devicePixelRatio` để giữ nguyên kích thư�
 | --- | --- |
 | `P` / `H` / `E` | Bút thường / Dạ quang / Tẩy |
 | `S` | Công cụ kẻ đường thẳng (hoặc giữ `Shift` rồi kéo bằng bút thường) |
+| `M` | Công cụ kéo điểm — nắm đầu đường thẳng để chỉnh hình |
+| `F` | Bật / tắt toàn màn hình |
 | `L` | Đổi kiểu nét: liền → đứt → chấm → đứt–chấm |
 | `Ctrl+Z` / `Ctrl+Shift+Z` (hoặc `Ctrl+Y`) | Hoàn tác / Làm lại |
 | `[` `]` | Giảm / tăng độ dày nét |

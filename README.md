@@ -41,7 +41,8 @@ Trình duyệt nên dùng: Chrome / Edge / Cobalt / Brave (bản mới). Bút c�
 | Lưu phiên | Tự lưu vào `localStorage` sau mỗi thay đổi, tự khôi phục khi mở lại |
 | Xuất | PNG (trang hiện tại, 2x), PDF (toàn bộ trang, ảnh JPEG nhúng, không thư viện ngoài) |
 | Tệp | Xuất / nhập `.json` để sao lưu hoặc chuyển máy |
-| Xem | Zoom giấy 35–600%, nút "Vừa" canh giấy theo chiều rộng khung (giấy luôn phủ kín bề ngang cửa sổ) |
+| Xem | Zoom giấy 35–800%, nút "Vừa" canh giấy theo chiều rộng khung (giấy luôn phủ kín bề ngang cửa sổ) |
+| Khổ giấy | **A4 dọc**, **A4 ngang** (viết được dài hơn mỗi dòng), hoặc **Vừa màn hình** — cả khung hình thành một trang giấy, không phải cuộn. Chọn trong ⚙, lưu cho lần sau |
 | Phóng giấy | `Ctrl` + lăn chuột hoặc chụm 2 ngón trên giấy để phóng to / thu nhỏ đúng chỗ đang trỏ — **thanh công cụ giữ nguyên kích thước** |
 | Cỡ giao diện | Nhỏ / Vừa / Lớn trong ⚙ — đổi độ lớn thanh công cụ, nhớ cho lần sau |
 
@@ -101,10 +102,11 @@ xử lý lại (ví dụ đổi màu, đổi độ dày) mà không mất chất
 
 ## Ghi chú kỹ thuật
 
-- Kích thước trang logic: 794 × 1123 (A4 @ 96dpi). Canvas render ở `dpr × zoom`
-  nên nét vẫn sắc khi phóng to.
+- Kích thước trang logic nằm trong tài liệu: A4 dọc 794 × 1123, A4 ngang
+  1123 × 794, hoặc "vừa màn hình" = đúng khung nhìn (bám theo khi đổi cỡ cửa
+  sổ). Canvas render ở `dpr × zoom` nên nét vẫn sắc khi phóng to.
 - Nét bút vẽ bằng chuỗi tứ giác nối tiếp (mỗi đoạn một độ rộng), gom vào một
   path duy nhất rồi `fill()` một lần → mượt và nhanh.
 - PDF được sinh thủ công: mỗi trang là một XObject ảnh JPEG (`/DCTDecode`) trên
-  khổ A4, kèm bảng `xref` và `startxref` chuẩn.
+  đúng khổ giấy của trang (A4 hoặc khổ màn hình), kèm bảng `xref` và `startxref` chuẩn.
 - Không có mã mạng, không tải gì từ Internet; mọi thứ chạy cục bộ.

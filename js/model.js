@@ -4,6 +4,13 @@
 
   var PAGE_W = 794;   // A4 @ 96dpi -> logical page units
   var PAGE_H = 1123;
+  /* Named sheets. "screen" is resized to the window, so one page fills the display. */
+  var PAPERS = {
+    a4: [794, 1123],
+    a4l: [1123, 794]
+  };
+  var MIN_PAGE = 320;
+  var MAX_PAGE = 6000;
   var BG_STYLES = ['blank', 'lined', 'grid', 'dotted'];
   var LINE_STYLES = ['solid', 'dashed', 'dotted', 'dashdot'];
   var MAX_TITLE = 120;
@@ -24,6 +31,9 @@
       app: 'inknote',
       version: 1,
       title: 'Ghi chú mới',
+      paper: 'a4',
+      pageW: PAGE_W,
+      pageH: PAGE_H,
       pages: [createPage('lined')],
       active: 0
     };
@@ -31,6 +41,11 @@
 
   function num(v, fallback) {
     return typeof v === 'number' && isFinite(v) ? v : fallback;
+  }
+
+  function clampPage(v, fallback) {
+    var n = num(v, fallback);
+    return Math.round(Math.min(MAX_PAGE, Math.max(MIN_PAGE, n)));
   }
 
   function isStroke(raw) {
@@ -82,7 +97,18 @@
     });
     var active = Math.min(Math.max(0, Math.round(num(raw.active, 0))), pages.length - 1);
     var title = typeof raw.title === 'string' ? raw.title.slice(0, MAX_TITLE) : 'Ghi chú';
-    return { app: 'inknote', version: 1, title: title, pages: pages, active: active };
+    var paper = raw.paper === 'a4l' || raw.paper === 'screen' ? raw.paper : 'a4';
+    var dims = PAPERS[paper] || [PAGE_W, PAGE_H];
+    return {
+      app: 'inknote',
+      version: 1,
+      title: title,
+      paper: paper,
+      pageW: clampPage(raw.pageW, dims[0]),
+      pageH: clampPage(raw.pageH, dims[1]),
+      pages: pages,
+      active: active
+    };
   }
 
   function cloneDoc(doc) {
@@ -92,6 +118,9 @@
   global.InkModel = {
     PAGE_W: PAGE_W,
     PAGE_H: PAGE_H,
+    PAPERS: PAPERS,
+    MIN_PAGE: MIN_PAGE,
+    MAX_PAGE: MAX_PAGE,
     BG_STYLES: BG_STYLES,
     uid: uid,
     createPage: createPage,

@@ -25,6 +25,7 @@ Trình duyệt nên dùng: Chrome / Edge / Cobalt / Brave (bản mới). Bút c�
 | Nhóm | Chi tiết |
 | --- | --- |
 | Bút | Nét đổi độ dày theo áp lực bút, làm mượt điểm, 7 màu nhanh + màu tuỳ chọn |
+| Nét chữ | **Chống rung**: Tắt / Nhẹ / Mạnh (giảm run tay khi viết chữ) và **độ nhạy áp lực** 0–100% (0% = nét đều) |
 | Thước kẻ | Công cụ kẻ đường thẳng: kéo từ đầu đến cuối là ra một đoạn thẳng tuyệt đối; giữ `Shift` khi đang dùng bút thường cũng cho đoạn thẳng |
 | Cỡ nét | 3 nút cỡ nhanh trên thanh trên (mảnh / vừa / đậm) + thanh trượt chỉnh chi tiết |
 | Kiểu nét | Nét liền, nét đứt, nét chấm, nét đứt–chấm — dùng để vẽ hình học (cạnh thấy / cạnh khuất, trục) |

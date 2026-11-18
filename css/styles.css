@@ -709,40 +709,46 @@ body {
   z-index: 20;
   display: flex;
   align-items: center;
-  gap: 2px;
-  height: calc(32px * var(--ui));
-  padding: 0 calc(3px * var(--ui));
+  gap: calc(3px * var(--ui));
+  height: calc(38px * var(--ui));
+  padding: 0 calc(4px * var(--ui));
   font-size: calc(13px * var(--ui));
-  background: rgba(255, 255, 255, 0.94);
+  background: rgba(255, 255, 255, 0.96);
   border: 1px solid var(--line);
   border-radius: 999px;
   box-shadow: 0 3px 12px rgba(24, 34, 54, 0.13);
   user-select: none;
   -webkit-user-select: none;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .zoom-dock button {
   display: grid;
   place-items: center;
-  min-width: calc(26px * var(--ui));
-  height: calc(26px * var(--ui));
+  min-width: calc(34px * var(--ui));
+  height: calc(32px * var(--ui));
   padding: 0;
   font: inherit;
-  font-size: 1.05em;
+  font-size: 1.2em;
+  font-weight: 600;
   line-height: 1;
   color: var(--text);
   background: transparent;
   border: 0;
   border-radius: 999px;
   cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .zoom-dock button:hover { color: var(--accent); background: var(--accent-soft); }
-.zoom-dock button:active { background: #dce8fd; }
+.zoom-dock button:active { background: #dce8fd; transform: scale(0.94); }
 
 .zoom-dock .dock-pct {
-  min-width: calc(46px * var(--ui));
-  font-size: 0.9em;
+  min-width: calc(56px * var(--ui));
+  font-size: 0.92em;
+  font-weight: 500;
   color: var(--muted);
   font-variant-numeric: tabular-nums;
 }

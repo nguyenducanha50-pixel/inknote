@@ -11,6 +11,10 @@
     a4l: [1123, 794],
     a3: [1191, 1684],
     a3l: [1684, 1191],
+    a2: [1684, 2384],
+    a2l: [2384, 1684],
+    a0: [2384, 3370],
+    a0l: [3370, 2384],
     long: [794, 2246]
   };
   var MIN_PAGE = 320;
@@ -35,9 +39,9 @@
       app: 'inknote',
       version: 1,
       title: 'Ghi chú mới',
-      paper: 'a4',
-      pageW: PAGE_W,
-      pageH: PAGE_H,
+      paper: 'a3l',
+      pageW: 1684,
+      pageH: 1191,
       grow: false,
       pages: [createPage('lined')],
       active: 0
@@ -102,7 +106,11 @@
     });
     var active = Math.min(Math.max(0, Math.round(num(raw.active, 0))), pages.length - 1);
     var title = typeof raw.title === 'string' ? raw.title.slice(0, MAX_TITLE) : 'Ghi chú';
-    var paper = raw.paper === 'screen' || PAPERS[raw.paper] ? raw.paper : 'a4';
+    /* Older notes saved before paper sizes existed had no pageW: give them
+       the roomy A3 landscape sheet instead of the old A4 one. */
+    var paper = raw.paper === 'screen' || PAPERS[raw.paper]
+      ? raw.paper
+      : (typeof raw.pageW === 'number' ? 'a4' : 'a3l');
     var dims = PAPERS[paper] || [PAGE_W, PAGE_H];
     return {
       app: 'inknote',

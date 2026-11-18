@@ -62,6 +62,7 @@
     smoothBtns: Array.prototype.slice.call(document.querySelectorAll('[data-smooth]')),
     uiBtns: Array.prototype.slice.call(document.querySelectorAll('[data-ui]')),
     paperBtns: Array.prototype.slice.call(document.querySelectorAll('[data-paper]')),
+    growBtns: Array.prototype.slice.call(document.querySelectorAll('[data-grow]')),
     sensSlider: $('#sensSlider'),
     sensLabel: $('#sensLabel'),
     band: $('#marginBand'),
@@ -101,6 +102,7 @@
   var pressureSens = 0.65;
   var uiScale = 1.15;
   var paperPref = 'a4';
+  var growPref = false;
   var SMOOTH_ALPHA = { 0: 1, 1: 0.55, 2: 0.4, 3: 0.28 };
   var smoothPt = null;
   var lastRaw = null;
@@ -158,6 +160,7 @@
         if (typeof raw.sens === 'number') pressureSens = clamp(raw.sens, 0, 1);
         if (typeof raw.ui === 'number') uiScale = clamp(raw.ui, 1, 1.35);
         if (raw.paper === 'screen' || M.PAPERS[raw.paper]) paperPref = raw.paper;
+        if (typeof raw.grow === 'boolean') growPref = raw.grow;
       }
     } catch (e) { /* ignore */ }
     R.setPressureSensitivity(pressureSens);
@@ -198,7 +201,7 @@
 
   function savePrefs() {
     try {
-      localStorage.setItem(PREFS_KEY, JSON.stringify({ smooth: smoothLevel, sens: pressureSens, ui: uiScale, paper: paperPref }));
+      localStorage.setItem(PREFS_KEY, JSON.stringify({ smooth: smoothLevel, sens: pressureSens, ui: uiScale, paper: paperPref, grow: growPref }));
     } catch (e) { /* ignore */ }
   }
 
@@ -750,6 +753,9 @@
     el.paperBtns.forEach(function (btn) {
       btn.classList.toggle('is-active', btn.dataset.paper === (doc.paper || 'a4'));
     });
+    el.growBtns.forEach(function (btn) {
+      btn.classList.toggle('is-active', btn.dataset.grow === (doc.grow ? '1' : '0'));
+    });
     syncPips();
   }
 
@@ -891,6 +897,10 @@
 
   function applyPaper(kind) {
     doc.paper = kind;
+    /* "Trang dài" is A4 + auto-extension; a screen-sized sheet must stay fixed. */
+    if (kind === 'long') doc.grow = true;
+    else if (kind === 'screen') doc.grow = false;
+    else doc.grow = growPref;
     if (kind === 'screen') {
       var size = stageSize();
       doc.pageW = Math.max(M.MIN_PAGE, size.w);
@@ -943,12 +953,27 @@
         : 'Khổ ' + PAPER_LABEL[kind]);
   }
 
-  /* "Trang dài" keeps extending while the pen approaches the bottom, so a long
-     proof can live on one continuous sheet. */
+  /* Auto-extension switch: any sheet can keep growing (A3 landscape included). */
+  function setGrow(on) {
+    if (on && doc.paper === 'screen') {
+      toast('Khổ “vừa màn hình” là cố định — chọn A3 ngang hoặc A4 rồi bật tự nối dài');
+      return;
+    }
+    if (!!doc.grow === !!on) return;
+    doc.grow = !!on;
+    growPref = !!on;
+    savePrefs();
+    markDirty();
+    updateUI();
+    toast(on ? 'Tự nối dài: viết tới đáy là trang dài thêm' : 'Đã tắt tự nối dài');
+  }
+
+  /* Any sheet keeps extending while the pen approaches the bottom, so a long
+     proof can live on one continuous page. */
   var LONG_STEP = 561;
 
   function growLongPage() {
-    if (doc.paper !== 'long') return;
+    if (!doc.grow) return;
     var page = activePage();
     var last = page.strokes[page.strokes.length - 1];
     if (!last) return;
@@ -1212,6 +1237,10 @@
 
   el.paperBtns.forEach(function (btn) {
     btn.addEventListener('click', function () { setPaper(btn.dataset.paper); });
+  });
+
+  el.growBtns.forEach(function (btn) {
+    btn.addEventListener('click', function () { setGrow(btn.dataset.grow === '1'); });
   });
 
   el.undo.addEventListener('click', undo);
@@ -1483,6 +1512,7 @@
   el.base.style.cursor = 'crosshair';
   el.title.value = doc.title;
   loadPrefs();
+  if (doc.grow) growPref = true;
   syncSlider();
   setColor(color);
   layout();

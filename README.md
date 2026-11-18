@@ -42,7 +42,8 @@ Trình duyệt nên dùng: Chrome / Edge / Cobalt / Brave (bản mới). Bút c�
 | Xuất | PNG (trang hiện tại, 2x), PDF (toàn bộ trang, ảnh JPEG nhúng, không thư viện ngoài) |
 | Tệp | Xuất / nhập `.json` để sao lưu hoặc chuyển máy |
 | Xem | Zoom giấy 35–800%, nút "Vừa" canh giấy theo chiều rộng khung (giấy luôn phủ kín bề ngang cửa sổ) |
-| Khổ giấy | **A4 dọc / A4 ngang / A3 dọc / A3 ngang / Trang dài / Vừa màn hình** trong ⚙. *Trang dài* tự nối thêm khi viết tới đáy nên chứng minh dài không cần sang trang; *Vừa màn hình* thì cả khung hình là một trang. Lưu cho lần sau |
+| Khổ giấy | **A4 dọc / A4 ngang / A3 dọc / A3 ngang / Trang dài / Vừa màn hình** trong ⚙. Lưu cho lần sau, xuất PDF đúng khổ |
+| Tự nối dài | Công tắc trong ⚙: bật lên thì trang **cứ dài thêm khi viết tới đáy** — dùng với A3 ngang là có trang A3 ngang dài vô tận; áp cho mọi khổ trừ "vừa màn hình", nhớ cho lần sau |
 | Phóng giấy | `Ctrl` + lăn chuột hoặc chụm 2 ngón trên giấy để phóng to / thu nhỏ đúng chỗ đang trỏ — **thanh công cụ giữ nguyên kích thước** |
 | Cỡ giao diện | Nhỏ / Vừa / Lớn trong ⚙ — đổi độ lớn thanh công cụ, nhớ cho lần sau |
 
@@ -103,10 +104,12 @@ xử lý lại (ví dụ đổi màu, đổi độ dày) mà không mất chất
 ## Ghi chú kỹ thuật
 
 - Kích thước trang logic nằm trong tài liệu: A4 dọc 794 × 1123, A4 ngang
-  1123 × 794, A3 dọc 1191 × 1684, A3 ngang 1684 × 1191, "trang dài" 794 × 2246
-  và tự cộng thêm 561 mỗi lần viết tới đáy, hoặc "vừa màn hình" = đúng khung
-  nhìn (bám theo khi đổi cỡ cửa sổ). Canvas render ở `dpr × zoom` nên nét vẫn
-  sắc khi phóng to.
+  1123 × 794, A3 dọc 1191 × 1684, A3 ngang 1684 × 1191, "trang dài" 794 × 2246,
+  hoặc "vừa màn hình" = đúng khung nhìn (bám theo khi đổi cỡ cửa sổ). Canvas
+  render ở `dpr × zoom` nên nét vẫn sắc khi phóng to.
+- Cờ `grow` (lưu trong tài liệu và trong `localStorage` của bảng chọn) quyết định
+  việc tự nối dài: khi bật, mỗi nét kết thúc trong 90px cuối trang sẽ cộng thêm
+  561 vào `pageH` (tối đa 14000). "Trang dài" luôn bật, "vừa màn hình" luôn tắt.
 - Nét bút vẽ bằng chuỗi tứ giác nối tiếp (mỗi đoạn một độ rộng), gom vào một
   path duy nhất rồi `fill()` một lần → mượt và nhanh.
 - PDF được sinh thủ công: mỗi trang là một XObject ảnh JPEG (`/DCTDecode`) trên

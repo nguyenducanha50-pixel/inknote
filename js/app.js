@@ -105,7 +105,7 @@
   var smoothLevel = 1;
   var pressureSens = 0.65;
   var uiScale = 1.15;
-  var paperPref = 'a4';
+  var paperPref = 'a3l';
   var growPref = false;
   var SMOOTH_ALPHA = { 0: 1, 1: 0.55, 2: 0.4, 3: 0.28 };
   var smoothPt = null;
@@ -239,34 +239,79 @@
 
   /* ------------------------------------------------------------- rendering */
 
-  /* Backing scale, capped so a wide fit-to-width zoom cannot exhaust canvas memory. */
-  function pageScale() {
+  /* Two rendering modes.
+     - "page": the whole sheet is one bitmap at dpr × zoom, capped at 12 MP so
+       a big A0 sheet cannot exhaust memory. Scrolling is just a CSS move.
+     - "window": past that cap, only the visible slice is drawn, one device
+       pixel per screen pixel. Zoom can then go far beyond 1000% and stay
+       perfectly sharp with a small, fixed-size bitmap. */
+  var windowed = false;
+  var windowScale = 1;
+  var viewRaf = 0;
+
+  function fullPageScale() {
     var raw = dpr * zoom;
     var cap = Math.sqrt(12e6 / (pageW() * pageH()));
     return Math.min(raw, cap);
   }
 
+  function isWindowed() {
+    return dpr * zoom > fullPageScale() + 0.0001;
+  }
+
   function applyTransform(ctx) {
-    var s = pageScale();
-    ctx.setTransform(s, 0, 0, s, 0, 0);
+    var s = windowed ? windowScale * zoom : fullPageScale();
+    var ox = 0;
+    var oy = 0;
+    if (windowed) {
+      var sr = el.stage.getBoundingClientRect();
+      var wr = el.wrap.getBoundingClientRect();
+      ox = (wr.left - sr.left) * windowScale;
+      oy = (wr.top - sr.top) * windowScale;
+    }
+    ctx.setTransform(s, 0, 0, s, ox, oy);
   }
 
   function layout() {
-    var s = pageScale();
+    windowed = isWindowed();
     var w = pageW();
     var h = pageH();
-    var bw = Math.round(w * s);
-    var bh = Math.round(h * s);
     var cssW = (w * zoom) + 'px';
     var cssH = (h * zoom) + 'px';
-    [el.base, el.live].forEach(function (canvas) {
-      canvas.width = bw;
-      canvas.height = bh;
-      canvas.style.width = cssW;
-      canvas.style.height = cssH;
-    });
     el.wrap.style.width = cssW;
     el.wrap.style.height = cssH;
+
+    if (windowed) {
+      var vw = Math.max(1, el.stage.clientWidth);
+      var vh = Math.max(1, el.stage.clientHeight);
+      var sr = el.stage.getBoundingClientRect();
+      /* One device pixel per screen pixel; capped only for very large screens. */
+      windowScale = Math.min(Math.max(dpr, 1), Math.sqrt(9e6 / (vw * vh)));
+      var vw2 = Math.round(vw * windowScale);
+      var vh2 = Math.round(vh * windowScale);
+      [el.base, el.live].forEach(function (canvas) {
+        if (canvas.width !== vw2) canvas.width = vw2;
+        if (canvas.height !== vh2) canvas.height = vh2;
+        canvas.style.width = vw + 'px';
+        canvas.style.height = vh + 'px';
+        canvas.style.left = Math.round(sr.left) + 'px';
+        canvas.style.top = Math.round(sr.top) + 'px';
+        canvas.classList.add('is-windowed');
+      });
+    } else {
+      var s = fullPageScale();
+      var bw = Math.round(w * s);
+      var bh = Math.round(h * s);
+      [el.base, el.live].forEach(function (canvas) {
+        if (canvas.width !== bw) canvas.width = bw;
+        if (canvas.height !== bh) canvas.height = bh;
+        canvas.style.width = cssW;
+        canvas.style.height = cssH;
+        canvas.style.left = '';
+        canvas.style.top = '';
+        canvas.classList.remove('is-windowed');
+      });
+    }
   }
 
   function renderBase() {
@@ -314,7 +359,10 @@
   /* ----------------------------------------------------------------- input */
 
   function pagePoint(e) {
-    var rect = el.base.getBoundingClientRect();
+    /* The sheet's own rect works for both rendering modes: in windowed mode
+       the canvas is pinned to the viewport, but the page box still maps the
+       same way. */
+    var rect = el.wrap.getBoundingClientRect();
     return {
       x: (e.clientX - rect.left) / zoom,
       y: (e.clientY - rect.top) / zoom
@@ -476,7 +524,7 @@
     renderBase();
     renderLive();
     /* Follow the finger when the figure is dragged past the edge. */
-    autoScroll({ clientY: pt.y * zoom + el.base.getBoundingClientRect().top });
+    autoScroll({ clientY: pt.y * zoom + el.wrap.getBoundingClientRect().top });
   }
 
   function endVertexDrag(cancelled) {
@@ -825,9 +873,10 @@
   }
 
   /* The sheet may be zoomed well past 100% so it keeps filling very wide
-     (or browser-zoomed-out) windows; the backing store caps itself in pageScale(). */
-  var MAX_ZOOM = 8;
-  var MIN_ZOOM = 0.35;
+     (or browser-zoomed-out) windows. Past the bitmap cap the renderer switches
+     to drawing only the visible slice, so 1600% stays sharp. */
+  var MAX_ZOOM = 16;
+  var MIN_ZOOM = 0.05;
 
   /* Width needed for the sheet to fill the window: the paper never gets
      narrower than the screen, so zooming out stops at "full width". */
@@ -941,6 +990,9 @@
     a4l: 'A4 ngang',
     a3: 'A3 dọc',
     a3l: 'A3 ngang',
+    a2l: 'A2 ngang',
+    a0: 'A0 dọc',
+    a0l: 'A0 ngang',
     long: 'trang dài',
     screen: 'vừa màn hình'
   };
@@ -1193,6 +1245,17 @@
     var y = clamp(e.clientY, rect.top + 4, rect.bottom - 4);
     zoomAt(zoom * Math.exp(-delta * 0.0012), x, y);
   }, { passive: false, capture: true });
+
+  /* Windowed mode paints only the visible slice, so a scroll repaints it -
+     at most once per frame. */
+  el.stage.addEventListener('scroll', function () {
+    if (!windowed || viewRaf) return;
+    viewRaf = requestAnimationFrame(function () {
+      viewRaf = 0;
+      renderBase();
+      renderLive();
+    });
+  }, { passive: true });
 
   var pinch = null;
   var lastPinchZoom = 0;

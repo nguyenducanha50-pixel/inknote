@@ -42,6 +42,10 @@
     zoomIn: $('#zoomIn'),
     zoomOut: $('#zoomOut'),
     zoomFit: $('#zoomFit'),
+    zoomPresets: Array.prototype.slice.call(document.querySelectorAll('[data-zoom]')),
+    dockIn: $('#dockIn'),
+    dockOut: $('#dockOut'),
+    dockPct: $('#dockPct'),
     btnFull: $('#btnFull'),
     color: $('#colorInput'),
     btnPages: $('#btnPages'),
@@ -778,7 +782,9 @@
   }
 
   function updateZoomLabel() {
-    el.zoomLabel.textContent = Math.round(zoom * 100) + '%';
+    var text = Math.round(zoom * 100) + '%';
+    el.zoomLabel.textContent = text;
+    if (el.dockPct) el.dockPct.textContent = text;
   }
 
   function syncSlider() {
@@ -838,6 +844,13 @@
     renderBase();
     renderLive();
     updateZoomLabel();
+  }
+
+  /* One click of the +/− controls jumps about a quarter of the way, so large
+     jumps (54% → 400%) take a handful of clicks instead of thirty. */
+  function stepZoom(dir) {
+    var step = Math.max(0.1, zoom * (dir > 0 ? 0.22 : 0.18));
+    setZoom(zoom + (dir > 0 ? step : -step));
   }
 
   /* Zoom the paper around a screen point, so the spot under the cursor or
@@ -1162,16 +1175,24 @@
     renderLive();
   });
 
-  /* ---- zooming only the paper: Ctrl+wheel, trackpad pinch, two fingers ---- */
+  /* ---- zooming only the paper: Ctrl+wheel, trackpad pinch, two fingers ----
+     Listens on the window (capture) so the gesture works anywhere over the
+     app — toolbar, page strip or the bottom band — and Chrome's own page
+     zoom never fires instead. Alt+wheel does the same, for mice whose driver
+     swallows Ctrl+wheel. */
 
-  el.stage.addEventListener('wheel', function (e) {
-    if (!e.ctrlKey && !e.metaKey) return;
+  window.addEventListener('wheel', function (e) {
+    if (!e.ctrlKey && !e.metaKey && !e.altKey) return;
     e.preventDefault();
     var delta = e.deltaY;
     if (e.deltaMode === 1) delta *= 16;
     else if (e.deltaMode === 2) delta *= 400;
-    zoomAt(zoom * Math.exp(-delta * 0.0012), e.clientX, e.clientY);
-  }, { passive: false });
+    if (!delta) return;
+    var rect = el.stage.getBoundingClientRect();
+    var x = clamp(e.clientX, rect.left + 4, rect.right - 14);
+    var y = clamp(e.clientY, rect.top + 4, rect.bottom - 4);
+    zoomAt(zoom * Math.exp(-delta * 0.0012), x, y);
+  }, { passive: false, capture: true });
 
   var pinch = null;
   var lastPinchZoom = 0;
@@ -1255,9 +1276,51 @@
   el.png.addEventListener('click', exportPng);
   el.pdf.addEventListener('click', exportPdf);
 
-  el.zoomIn.addEventListener('click', function () { setZoom(zoom + 0.1); });
-  el.zoomOut.addEventListener('click', function () { setZoom(zoom - 0.1); });
+  el.zoomIn.addEventListener('click', function () { stepZoom(1); });
+  el.zoomOut.addEventListener('click', function () { stepZoom(-1); });
   el.zoomFit.addEventListener('click', fitStage);
+
+  el.zoomPresets.forEach(function (btn) {
+    btn.addEventListener('click', function () { setZoom(parseFloat(btn.dataset.zoom)); });
+  });
+
+  /* Always-visible zoom pill: one click (or press and hold) zooms the paper,
+     so nobody has to discover Ctrl+wheel. */
+  function holdRepeat(btn, step) {
+    if (!btn) return;
+    var delay = null;
+    var ticker = null;
+    function stop() {
+      clearTimeout(delay);
+      clearInterval(ticker);
+      delay = ticker = null;
+    }
+    btn.addEventListener('pointerdown', function (e) {
+      if (e.pointerType === 'mouse' && e.button !== 0) return;
+      e.preventDefault();
+      step();
+      stop();
+      delay = setTimeout(function () {
+        ticker = setInterval(step, 90);
+      }, 340);
+    });
+    ['pointerup', 'pointerleave', 'pointercancel'].forEach(function (t) {
+      btn.addEventListener(t, stop);
+    });
+    window.addEventListener('blur', stop);
+    /* Keyboard activation (Enter/Space) has no pointer events. */
+    btn.addEventListener('click', function (e) { if (e.detail === 0) step(); });
+  }
+
+  holdRepeat(el.dockIn, function () { stepZoom(1); });
+  holdRepeat(el.dockOut, function () { stepZoom(-1); });
+
+  if (el.dockPct) {
+    el.dockPct.addEventListener('click', function () {
+      fitStage();
+      toast('Đã canh giấy vừa chiều rộng');
+    });
+  }
 
   /* Full screen: drop the browser chrome so the sheet uses the whole display. */
   var toastTimer = null;
@@ -1431,6 +1494,21 @@
       redo();
       return;
     }
+    if (mod && (e.key === '+' || e.key === '=')) {
+      e.preventDefault();
+      stepZoom(1);
+      return;
+    }
+    if (mod && (e.key === '-' || e.key === '_')) {
+      e.preventDefault();
+      stepZoom(-1);
+      return;
+    }
+    if (mod && e.key === '0') {
+      e.preventDefault();
+      fitStage();
+      return;
+    }
     if (e.key === 'Escape') {
       closePopovers();
       return;
@@ -1451,8 +1529,8 @@
       }
       case '[': changeSize(-1); break;
       case ']': changeSize(1); break;
-      case '+': case '=': setZoom(zoom + 0.1); break;
-      case '-': case '_': setZoom(zoom - 0.1); break;
+      case '+': case '=': stepZoom(1); break;
+      case '-': case '_': stepZoom(-1); break;
       case 'ArrowLeft': gotoPage(doc.active - 1); break;
       case 'ArrowRight': gotoPage(doc.active + 1); break;
       case 'PageUp': gotoPage(doc.active - 1); break;

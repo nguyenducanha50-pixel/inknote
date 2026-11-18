@@ -248,6 +248,9 @@
   var windowed = false;
   var windowScale = 1;
   var viewRaf = 0;
+  /* Scroll offset the visible slice was last painted for, so a missed scroll
+     event can be noticed and repaired (see the watchdog further down). */
+  var paintedAt = { x: -1, y: -1 };
 
   function fullPageScale() {
     var raw = dpr * zoom;
@@ -268,6 +271,8 @@
       var wr = el.wrap.getBoundingClientRect();
       ox = (wr.left - sr.left) * windowScale;
       oy = (wr.top - sr.top) * windowScale;
+      paintedAt.x = el.stage.scrollLeft;
+      paintedAt.y = el.stage.scrollTop;
     }
     ctx.setTransform(s, 0, 0, s, ox, oy);
   }
@@ -898,8 +903,14 @@
   /* One click of the +/− controls jumps about a quarter of the way, so large
      jumps (54% → 400%) take a handful of clicks instead of thirty. */
   function stepZoom(dir) {
+    var before = zoom;
     var step = Math.max(0.1, zoom * (dir > 0 ? 0.22 : 0.18));
     setZoom(zoom + (dir > 0 ? step : -step));
+    if (zoom === before) {
+      toast(dir > 0
+        ? 'Đã phóng to hết mức (' + Math.round(MAX_ZOOM * 100) + '%)'
+        : 'Đã thu nhỏ hết mức — giấy đang vừa chiều rộng cửa sổ');
+    }
   }
 
   /* Zoom the paper around a screen point, so the spot under the cursor or
@@ -912,6 +923,13 @@
     var after = el.wrap.getBoundingClientRect();
     el.stage.scrollLeft += after.left + px * zoom - clientX;
     el.stage.scrollTop += after.top + py * zoom - clientY;
+    /* The deep-zoom slice is pinned to the viewport, so the scroll correction
+       above invalidates what is on screen: paint it again with the new offset,
+       otherwise the sheet sits a hundred pixels away from the cursor. */
+    if (windowed) {
+      renderBase();
+      renderLive();
+    }
   }
 
   /* Paper fills the window like a notepad: fit the width, scroll vertically. */
@@ -1257,6 +1275,22 @@
     });
   }, { passive: true });
 
+  /* Safety net: some embedded browsers and background tabs hold scroll events
+     back, which would leave the pinned slice showing an older position.
+     Comparing two numbers a few times a second is free, and it keeps the
+     window glued to the scroll offset whatever the browser does with events. */
+  setInterval(function () {
+    if (!windowed) return;
+    if (Math.abs(el.stage.scrollLeft - paintedAt.x) < 1 &&
+        Math.abs(el.stage.scrollTop - paintedAt.y) < 1) return;
+    if (viewRaf) {
+      cancelAnimationFrame(viewRaf);
+      viewRaf = 0;
+    }
+    renderBase();
+    renderLive();
+  }, 120);
+
   var pinch = null;
   var lastPinchZoom = 0;
 
@@ -1347,32 +1381,42 @@
     btn.addEventListener('click', function () { setZoom(parseFloat(btn.dataset.zoom)); });
   });
 
-  /* Always-visible zoom pill: one click (or press and hold) zooms the paper,
-     so nobody has to discover Ctrl+wheel. */
+  /* Always-visible zoom pill: one tap (mouse, finger, pen or keyboard) zooms
+     the paper one step; press and hold keeps zooming. The step lives on the
+     plain click so a cancelled pointer (a touch that turns into a scroll)
+     can never swallow the tap. */
   function holdRepeat(btn, step) {
     if (!btn) return;
     var delay = null;
     var ticker = null;
+    var held = false;
+
     function stop() {
       clearTimeout(delay);
       clearInterval(ticker);
       delay = ticker = null;
     }
+
     btn.addEventListener('pointerdown', function (e) {
       if (e.pointerType === 'mouse' && e.button !== 0) return;
-      e.preventDefault();
-      step();
+      held = false;
       stop();
       delay = setTimeout(function () {
+        held = true;
+        step();
         ticker = setInterval(step, 90);
-      }, 340);
+      }, 400);
     });
+
     ['pointerup', 'pointerleave', 'pointercancel'].forEach(function (t) {
       btn.addEventListener(t, stop);
     });
     window.addEventListener('blur', stop);
-    /* Keyboard activation (Enter/Space) has no pointer events. */
-    btn.addEventListener('click', function (e) { if (e.detail === 0) step(); });
+
+    btn.addEventListener('click', function () {
+      if (held) { held = false; return; }   /* the hold already did the steps */
+      step();
+    });
   }
 
   holdRepeat(el.dockIn, function () { stepZoom(1); });

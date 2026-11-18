@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>InkNote — ghi chú bằng bút</title>
-<link rel="stylesheet" href="css/styles.css?v=22" />
+<link rel="stylesheet" href="css/styles.css?v=23" />
 </head>
 <body>
 <div class="app">
@@ -215,7 +215,14 @@
         </button>
         <button id="zoomFit" class="text-btn" title="Vừa chiều rộng">Vừa</button>
       </div>
-      <div class="hint">Ctrl + lăn chuột hoặc chụm 2 ngón để phóng to giấy</div>
+      <div class="seg five" id="zoomPresets">
+        <button data-zoom="1">100%</button>
+        <button data-zoom="1.5">150%</button>
+        <button data-zoom="2">200%</button>
+        <button data-zoom="3">300%</button>
+        <button data-zoom="4">400%</button>
+      </div>
+      <div class="hint">Ctrl + lăn chuột (hoặc Alt + lăn) để phóng to giấy. Không dùng được chuột thì bấm <b>−  %  +</b> ở góc dưới bên trái, hoặc bấm nhanh 100–400% ở trên.</div>
       <div class="hint">Công cụ ↕ (M): nắm đầu mỗi đường thẳng để kéo chỉnh hình như GeoGebra</div>
 
       <span class="pop-sep"></span>
@@ -234,6 +241,12 @@
     </div>
   </main>
 
+  <div class="zoom-dock" id="zoomDock" role="group" aria-label="Thu phóng giấy">
+    <button id="dockOut" title="Thu nhỏ giấy (−)" aria-label="Thu nhỏ giấy">−</button>
+    <button id="dockPct" class="dock-pct" title="Bấm để canh giấy vừa chiều rộng">100%</button>
+    <button id="dockIn" title="Phóng to giấy (+)" aria-label="Phóng to giấy">+</button>
+  </div>
+
   <div class="margin-band" id="marginBand" aria-hidden="true"></div>
 
   <button id="prevPage" class="page-arrow left" title="Trang trước (←)" aria-label="Trang trước">
@@ -246,10 +259,10 @@
 
 <noscript>Ứng dụng cần JavaScript để vẽ. Hãy bật JavaScript rồi tải lại trang.</noscript>
 
-<script src="js/model.js?v=22"></script>
-<script src="js/storage.js?v=22"></script>
-<script src="js/render.js?v=22"></script>
-<script src="js/export.js?v=22"></script>
-<script src="js/app.js?v=22"></script>
+<script src="js/model.js?v=23"></script>
+<script src="js/storage.js?v=23"></script>
+<script src="js/render.js?v=23"></script>
+<script src="js/export.js?v=23"></script>
+<script src="js/app.js?v=23"></script>
 </body>
 </html>

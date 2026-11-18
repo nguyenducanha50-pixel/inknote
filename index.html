@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>InkNote — ghi chú bằng bút</title>
-<link rel="stylesheet" href="css/styles.css?v=20" />
+<link rel="stylesheet" href="css/styles.css?v=22" />
 </head>
 <body>
 <div class="app">
@@ -193,7 +193,14 @@
         <button class="paper-opt" data-paper="long">Trang dài<em>tự nối dài mãi</em></button>
         <button class="paper-opt" data-paper="screen">Vừa màn hình<em>khít cửa sổ</em></button>
       </div>
-      <div class="hint">Trang dài tự nối thêm khi viết tới đáy — chứng minh dài không cần sang trang. “Vừa màn hình” thì cả khung hình là một trang.</div>
+
+      <div class="pop-title">Tự nối dài khi viết tới đáy</div>
+      <div class="seg two" id="growSeg">
+        <button data-grow="0">Tắt</button>
+        <button data-grow="1">Bật</button>
+      </div>
+
+      <div class="hint">Bật “tự nối dài” thì trang cứ dài thêm khi viết tới đáy — A3 ngang cũng nối được. “Vừa màn hình” thì cả khung hình là một trang.</div>
 
       <span class="pop-sep"></span>
 
@@ -239,10 +246,10 @@
 
 <noscript>Ứng dụng cần JavaScript để vẽ. Hãy bật JavaScript rồi tải lại trang.</noscript>
 
-<script src="js/model.js?v=20"></script>
-<script src="js/storage.js?v=20"></script>
-<script src="js/render.js?v=20"></script>
-<script src="js/export.js?v=20"></script>
-<script src="js/app.js?v=20"></script>
+<script src="js/model.js?v=22"></script>
+<script src="js/storage.js?v=22"></script>
+<script src="js/render.js?v=22"></script>
+<script src="js/export.js?v=22"></script>
+<script src="js/app.js?v=22"></script>
 </body>
 </html>

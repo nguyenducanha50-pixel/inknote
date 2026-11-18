@@ -41,10 +41,10 @@ Trình duyệt nên dùng: Chrome / Edge / Cobalt / Brave (bản mới). Bút c�
 | Lưu phiên | Tự lưu vào `localStorage` sau mỗi thay đổi, tự khôi phục khi mở lại |
 | Xuất | PNG (trang hiện tại, 2x), PDF (toàn bộ trang, ảnh JPEG nhúng, không thư viện ngoài) |
 | Tệp | Xuất / nhập `.json` để sao lưu hoặc chuyển máy |
-| Xem | Zoom giấy 35–800%, nút "Vừa" canh giấy theo chiều rộng khung (giấy luôn phủ kín bề ngang cửa sổ) |
+| Xem | Zoom giấy 35–800% bằng **`Ctrl`/`Alt` + lăn chuột ở bất kỳ đâu**, **cụm − / % / + nổi ở góc dưới trái**, phím `+` / `-` / `Ctrl+0`, hoặc mốc nhanh 100–400% trong ⚙. Nút % canh giấy vừa chiều rộng khung (giấy luôn phủ kín bề ngang cửa sổ) |
 | Khổ giấy | **A4 dọc / A4 ngang / A3 dọc / A3 ngang / Trang dài / Vừa màn hình** trong ⚙. Lưu cho lần sau, xuất PDF đúng khổ |
 | Tự nối dài | Công tắc trong ⚙: bật lên thì trang **cứ dài thêm khi viết tới đáy** — dùng với A3 ngang là có trang A3 ngang dài vô tận; áp cho mọi khổ trừ "vừa màn hình", nhớ cho lần sau |
-| Phóng giấy | `Ctrl` + lăn chuột hoặc chụm 2 ngón trên giấy để phóng to / thu nhỏ đúng chỗ đang trỏ — **thanh công cụ giữ nguyên kích thước** |
+| Phóng giấy | `Ctrl` (hoặc `Alt`) + lăn chuột hay chụm 2 ngón — hoạt động ở **bất kỳ đâu trên trang**, kể cả trên thanh công cụ và dải tím dưới đáy, và luôn phóng to / thu nhỏ đúng chỗ đang trỏ. Chuột không có phím phụ thì dùng cụm **−  %  +** nổi ở góc dưới trái (giữ nút để phóng liên tục) — **thanh công cụ giữ nguyên kích thước** |
 | Cỡ giao diện | Nhỏ / Vừa / Lớn trong ⚙ — đổi độ lớn thanh công cụ, nhớ cho lần sau |
 
 ## Giao diện
@@ -52,7 +52,8 @@ Trình duyệt nên dùng: Chrome / Edge / Cobalt / Brave (bản mới). Bút c�
 Bám theo Scrble Ink: thanh trên rất mỏng, tên ghi chú ở giữa kèm số trang trong
 ngoặc, cụm chấm màu bên phải (chấm đang chọn phóng to có dấu ✓), ba chấm cỡ nét,
 bốn công cụ bút / kẻ thẳng / kéo điểm / dạ quang / tẩy và nút cài đặt. Đáy màn hình
-là dải tím đánh dấu vùng tự cuộn, hai mũi tên tam giác hai bên để chuyển trang.
+là dải tím đánh dấu vùng tự cuộn, hai mũi tên tam giác hai bên để chuyển trang và
+cụm thu phóng **− % +** nổi bên trái để phóng to giấy mà không cần phím.
 Giấy kẻ dòng chạy tràn viền, không khung, không lề đỏ.
 
 Giấy luôn rộng bằng bề ngang cửa sổ và **không thu nhỏ hơn mức đó**: kéo nhỏ mãi
@@ -81,7 +82,8 @@ thanh được bù lại theo `devicePixelRatio` để giữ nguyên kích thư�
 | `[` `]` | Giảm / tăng độ dày nét |
 | `←` `→`, `PageUp` `PageDown` | Trang trước / trang sau |
 | `Delete` / `Backspace` | Xoá hết nét của trang hiện tại |
-| `+` `-` | Phóng to / thu nhỏ |
+| `+` `-` (hoặc `Ctrl` `+` / `Ctrl` `-`) | Phóng to / thu nhỏ giấy |
+| `Ctrl+0` | Canh giấy vừa chiều rộng |
 | `Esc` | Đóng menu |
 
 ## Cấu trúc

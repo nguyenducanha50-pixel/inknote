@@ -41,10 +41,10 @@ Trình duyệt nên dùng: Chrome / Edge / Cobalt / Brave (bản mới). Bút c�
 | Lưu phiên | Tự lưu vào `localStorage` sau mỗi thay đổi, tự khôi phục khi mở lại |
 | Xuất | PNG (trang hiện tại, 2x), PDF (toàn bộ trang, ảnh JPEG nhúng, không thư viện ngoài) |
 | Tệp | Xuất / nhập `.json` để sao lưu hoặc chuyển máy |
-| Xem | Zoom giấy 35–800% bằng **`Ctrl`/`Alt` + lăn chuột ở bất kỳ đâu**, **cụm − / % / + nổi ở góc dưới trái**, phím `+` / `-` / `Ctrl+0`, hoặc mốc nhanh 100–400% trong ⚙. Nút % canh giấy vừa chiều rộng khung (giấy luôn phủ kín bề ngang cửa sổ) |
-| Khổ giấy | **A4 dọc / A4 ngang / A3 dọc / A3 ngang / Trang dài / Vừa màn hình** trong ⚙. Lưu cho lần sau, xuất PDF đúng khổ |
+| Xem | Zoom giấy 5–1600% bằng **`Ctrl`/`Alt` + lăn chuột ở bất kỳ đâu**, **cụm − / % / + nổi ở góc dưới trái**, phím `+` / `-` / `Ctrl+0`, hoặc mốc nhanh 100 / 200 / 400 / 800% trong ⚙. Nút % canh giấy vừa chiều rộng khung (giấy luôn phủ kín bề ngang cửa sổ) |
+| Khổ giấy | **A3 dọc / A3 ngang / A2 ngang / A0 dọc / A0 ngang / Trang dài / Vừa màn hình** trong ⚙ — bỏ hẳn A4 cho rộng chỗ. Lưu cho lần sau, xuất PDF đúng khổ |
 | Tự nối dài | Công tắc trong ⚙: bật lên thì trang **cứ dài thêm khi viết tới đáy** — dùng với A3 ngang là có trang A3 ngang dài vô tận; áp cho mọi khổ trừ "vừa màn hình", nhớ cho lần sau |
-| Phóng giấy | `Ctrl` (hoặc `Alt`) + lăn chuột hay chụm 2 ngón — hoạt động ở **bất kỳ đâu trên trang**, kể cả trên thanh công cụ và dải tím dưới đáy, và luôn phóng to / thu nhỏ đúng chỗ đang trỏ. Chuột không có phím phụ thì dùng cụm **−  %  +** nổi ở góc dưới trái (giữ nút để phóng liên tục) — **thanh công cụ giữ nguyên kích thước** |
+| Phóng giấy | `Ctrl` (hoặc `Alt`) + lăn chuột hay chụm 2 ngón — hoạt động ở **bất kỳ đâu trên trang**, kể cả trên thanh công cụ và dải tím dưới đáy, và luôn phóng to / thu nhỏ đúng chỗ đang trỏ. Phóng sâu tới **1600%** vẫn sắc vì chỉ vẽ phần đang nhìn. Chuột không có phím phụ thì dùng cụm **−  %  +** nổi ở góc dưới trái (giữ nút để phóng liên tục) — **thanh công cụ giữ nguyên kích thước** |
 | Cỡ giao diện | Nhỏ / Vừa / Lớn trong ⚙ — đổi độ lớn thanh công cụ, nhớ cho lần sau |
 
 ## Giao diện
@@ -105,10 +105,14 @@ xử lý lại (ví dụ đổi màu, đổi độ dày) mà không mất chất
 
 ## Ghi chú kỹ thuật
 
-- Kích thước trang logic nằm trong tài liệu: A4 dọc 794 × 1123, A4 ngang
-  1123 × 794, A3 dọc 1191 × 1684, A3 ngang 1684 × 1191, "trang dài" 794 × 2246,
-  hoặc "vừa màn hình" = đúng khung nhìn (bám theo khi đổi cỡ cửa sổ). Canvas
-  render ở `dpr × zoom` nên nét vẫn sắc khi phóng to.
+- Kích thước trang logic nằm trong tài liệu: A3 dọc 1191 × 1684, A3 ngang
+  1684 × 1191, A2 ngang 2384 × 1684, A0 dọc 2384 × 3370, A0 ngang 3370 × 2384,
+  "trang dài" 794 × 2246, hoặc "vừa màn hình" = đúng khung nhìn (bám theo khi đổi
+  cỡ cửa sổ). Ghi chú cũ lưu A4 vẫn mở được đúng khổ cũ.
+- Renderer có hai chế độ: **toàn trang** (một bitmap `dpr × zoom`, tối đa 12 MP)
+  khi zoom còn thấp, và **cửa sổ nhìn** khi vượt mức đó — chỉ vẽ phần đang thấy,
+  mỗi điểm ảnh màn hình đúng một điểm ảnh thiết bị, nên 1600% vẫn sắc mà bộ nhớ
+  không tăng. Cuộn ở chế độ này sẽ vẽ lại theo từng khung hình.
 - Cờ `grow` (lưu trong tài liệu và trong `localStorage` của bảng chọn) quyết định
   việc tự nối dài: khi bật, mỗi nét kết thúc trong 90px cuối trang sẽ cộng thêm
   561 vào `pageH` (tối đa 14000). "Trang dài" luôn bật, "vừa màn hình" luôn tắt.

@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>InkNote — ghi chú bằng bút</title>
-<link rel="stylesheet" href="css/styles.css?v=23" />
+<link rel="stylesheet" href="css/styles.css?v=24" />
 </head>
 <body>
 <div class="app">
@@ -186,10 +186,11 @@
 
       <div class="pop-title">Khổ giấy</div>
       <div class="paper-row" id="paperRow">
-        <button class="paper-opt is-active" data-paper="a4">A4 dọc<em>794 × 1123</em></button>
-        <button class="paper-opt" data-paper="a4l">A4 ngang<em>1123 × 794</em></button>
         <button class="paper-opt" data-paper="a3">A3 dọc<em>1191 × 1684</em></button>
-        <button class="paper-opt" data-paper="a3l">A3 ngang<em>1684 × 1191</em></button>
+        <button class="paper-opt is-active" data-paper="a3l">A3 ngang<em>1684 × 1191</em></button>
+        <button class="paper-opt" data-paper="a2l">A2 ngang<em>2384 × 1684</em></button>
+        <button class="paper-opt" data-paper="a0">A0 dọc<em>2384 × 3370</em></button>
+        <button class="paper-opt" data-paper="a0l">A0 ngang<em>3370 × 2384</em></button>
         <button class="paper-opt" data-paper="long">Trang dài<em>tự nối dài mãi</em></button>
         <button class="paper-opt" data-paper="screen">Vừa màn hình<em>khít cửa sổ</em></button>
       </div>
@@ -215,14 +216,13 @@
         </button>
         <button id="zoomFit" class="text-btn" title="Vừa chiều rộng">Vừa</button>
       </div>
-      <div class="seg five" id="zoomPresets">
+      <div class="seg four" id="zoomPresets">
         <button data-zoom="1">100%</button>
-        <button data-zoom="1.5">150%</button>
         <button data-zoom="2">200%</button>
-        <button data-zoom="3">300%</button>
         <button data-zoom="4">400%</button>
+        <button data-zoom="8">800%</button>
       </div>
-      <div class="hint">Ctrl + lăn chuột (hoặc Alt + lăn) để phóng to giấy. Không dùng được chuột thì bấm <b>−  %  +</b> ở góc dưới bên trái, hoặc bấm nhanh 100–400% ở trên.</div>
+      <div class="hint">Ctrl + lăn chuột (hoặc Alt + lăn) để phóng giấy tới 1600% — nét vẫn sắc vì chỉ vẽ phần đang nhìn. Không dùng được chuột thì bấm <b>−  %  +</b> ở góc dưới bên trái, hoặc mốc nhanh ở trên.</div>
       <div class="hint">Công cụ ↕ (M): nắm đầu mỗi đường thẳng để kéo chỉnh hình như GeoGebra</div>
 
       <span class="pop-sep"></span>
@@ -259,10 +259,10 @@
 
 <noscript>Ứng dụng cần JavaScript để vẽ. Hãy bật JavaScript rồi tải lại trang.</noscript>
 
-<script src="js/model.js?v=23"></script>
-<script src="js/storage.js?v=23"></script>
-<script src="js/render.js?v=23"></script>
-<script src="js/export.js?v=23"></script>
-<script src="js/app.js?v=23"></script>
+<script src="js/model.js?v=24"></script>
+<script src="js/storage.js?v=24"></script>
+<script src="js/render.js?v=24"></script>
+<script src="js/export.js?v=24"></script>
+<script src="js/app.js?v=24"></script>
 </body>
 </html>

@@ -38,6 +38,7 @@
       paper: 'a4',
       pageW: PAGE_W,
       pageH: PAGE_H,
+      grow: false,
       pages: [createPage('lined')],
       active: 0
     };
@@ -110,6 +111,7 @@
       paper: paper,
       pageW: clampPage(raw.pageW, dims[0]),
       pageH: clampPage(raw.pageH, dims[1]),
+      grow: raw.grow === true || paper === 'long',
       pages: pages,
       active: active
     };
